@@ -196,6 +196,27 @@ class OrderManager(KillSwitchMixin):
         """
         return self.update_order_status(order_id, status='cancelled', notes=reason)
     
+    def get_recent_orders(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Return most recent orders as a list of dictionaries.
+        Ordered by submitted_at descending.
+        """
+        try:
+            query = (
+                """
+                SELECT order_id, client_order_id, strategy_name, ticker, side,
+                       order_type, quantity, filled_quantity, price, filled_avg_price,
+                       status, submitted_at, filled_at, canceled_at, created_at
+                FROM order_history
+                ORDER BY submitted_at DESC
+                LIMIT %(limit)s
+                """
+            )
+            results = self.db.execute_query(query, {'limit': limit})
+            return results if results else []
+        except Exception as e:
+            logger.error(f"Error getting recent orders: {str(e)}")
+            return []
+
     def get_order_history(self, strategy_name: Optional[str] = None, 
                          ticker: Optional[str] = None, limit: int = 100) -> pd.DataFrame:
         """
@@ -242,6 +263,43 @@ class OrderManager(KillSwitchMixin):
         except Exception as e:
             logger.error(f"Error getting order history: {str(e)}")
             return pd.DataFrame()
+
+    def reconcile_order_statuses(self, alpaca_orders: Optional[list] = None) -> int:
+        """Reconcile DB order statuses with Alpaca open/closed orders.
+        Returns number of rows updated.
+        """
+        try:
+            updated = 0
+            if alpaca_orders is None:
+                # No client provided; nothing to do in this minimal helper
+                return 0
+            for o in alpaca_orders:
+                try:
+                    status = getattr(o, 'status', None)
+                    order_id = getattr(o, 'id', None)
+                    filled_qty = getattr(o, 'filled_qty', None)
+                    filled_avg_price = getattr(o, 'filled_avg_price', None)
+                    # normalize filled_qty strings used by alpaca (e.g. '0')
+                    if isinstance(filled_qty, str):
+                        try:
+                            filled_qty = float(filled_qty)
+                        except Exception:
+                            filled_qty = None
+                    if not order_id or not status:
+                        continue
+                    self.update_order_status(
+                        order_id=order_id,
+                        status=status,
+                        filled_quantity=float(filled_qty) if filled_qty else None,
+                        filled_avg_price=float(filled_avg_price) if filled_avg_price else None
+                    )
+                    updated += 1
+                except Exception as ie:
+                    logger.warning(f"Reconcile skip for order due to error: {ie}")
+            return updated
+        except Exception as e:
+            logger.error(f"Error during order reconciliation: {str(e)}")
+            return 0
     
     def get_order_statistics(self, strategy_name: Optional[str] = None) -> Dict[str, Any]:
         """

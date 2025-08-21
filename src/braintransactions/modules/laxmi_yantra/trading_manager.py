@@ -174,8 +174,9 @@ class LaxmiYantra(BaseTransactionManager):
             strategy_name = transaction_data.get('strategy_name', 'default')
             current_position = self.portfolio_manager.get_position(strategy_name, ticker)
             
-            if not current_position or current_position['quantity'] < quantity:
-                available_qty = current_position['quantity'] if current_position else 0
+            current_qty = float(current_position['quantity']) if current_position and current_position.get('quantity') is not None else 0.0
+            if not current_position or current_qty < quantity:
+                available_qty = current_qty
                 raise InsufficientFundsError(
                     f"Insufficient position to sell {quantity} shares of {ticker}",
                     required_amount=quantity,
@@ -193,13 +194,22 @@ class LaxmiYantra(BaseTransactionManager):
         logger.info(f"🔄 Executing {action} order: {quantity} shares of {ticker}")
         
         try:
+            # Determine proper time_in_force (crypto requires non-'day')
+            tif = 'day'
+            try:
+                # Heuristic: crypto symbols commonly have '/' or '-USD'
+                if '/' in ticker or '-USD' in ticker or ticker.endswith('USD'):
+                    tif = 'gtc'
+            except Exception:
+                pass
+
             # Place order through Alpaca
             order = self.api.submit_order(
                 symbol=ticker,
                 qty=quantity,
                 side=action,
                 type=order_type,
-                time_in_force='day'
+                time_in_force=tif
             )
             
             # Store order in database
@@ -222,8 +232,8 @@ class LaxmiYantra(BaseTransactionManager):
             if not order_stored:
                 logger.warning(f"Order placed with Alpaca but failed to store in database: {order.id}")
             
-            # For market orders in paper trading, simulate immediate fill
-            if self.config.paper_trading and order_type == 'market':
+            # For market orders in paper trading, simulate immediate fill (optional)
+            if self.config.paper_trading and self.config.simulate_immediate_fill and order_type == 'market':
                 # Get current price for simulation
                 try:
                     bars = self.api.get_bars(ticker, TimeFrame(1, TimeFrameUnit.Minute), limit=1)
@@ -334,14 +344,15 @@ class LaxmiYantra(BaseTransactionManager):
         """
         position = self.portfolio_manager.get_position(strategy_name, ticker)
         
-        if not position or position['quantity'] <= 0:
+        qty = float(position['quantity']) if position and position.get('quantity') is not None else 0.0
+        if not position or qty <= 0:
             return {
                 'success': True,
                 'message': f'No position to close for {strategy_name} {ticker}',
                 'quantity_closed': 0
             }
         
-        return self.sell(ticker, position['quantity'], strategy_name)
+        return self.sell(ticker, qty, strategy_name)
     
     def get_portfolio_summary(self, strategy_name: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -420,3 +431,49 @@ class LaxmiYantra(BaseTransactionManager):
         except Exception as e:
             logger.critical(f"CRITICAL ERROR during Laxmi-yantra emergency stop: {str(e)}")
             return False
+
+    def poll_and_reconcile(self, strategy_name: str = "default", duration_seconds: int = 30, interval_seconds: float = 2.0) -> Dict[str, Any]:
+        """
+        Simple polling mechanism to keep DB in sync with broker for a short window.
+        - Polls at fixed intervals
+        - Reconciles order statuses and positions
+        - Returns a final snapshot
+        """
+        import time
+        snapshots: List[Dict[str, Any]] = []
+        start = datetime.now()
+        try:
+            while (datetime.now() - start).total_seconds() < duration_seconds:
+                try:
+                    orders = self.api.list_orders(status='all')
+                    self.order_manager.reconcile_order_statuses(orders)
+                except Exception as e:
+                    logger.warning(f"Order reconciliation error: {e}")
+                try:
+                    positions = self.api.list_positions()
+                    self.portfolio_manager.reconcile_positions_from_alpaca(positions, strategy_name)
+                except Exception as e:
+                    logger.warning(f"Position reconciliation error: {e}")
+                # Optional: snapshot each loop (kept minimal for now)
+                time.sleep(interval_seconds)
+        except Exception as e:
+            logger.error(f"Polling loop error: {e}")
+        # Final snapshot
+        try:
+            db = self.order_manager.db
+            final_positions = db.execute_query(
+                "SELECT strategy_name,ticker,quantity::text as quantity,avg_entry_price FROM laxmiyantra.portfolio_positions WHERE strategy_name=%(s)s ORDER BY ticker",
+                {'s': strategy_name}
+            )
+            final_orders = db.execute_query(
+                "SELECT order_id,ticker,side,status,quantity::text as qty,filled_quantity::text as filled_qty,filled_avg_price FROM laxmiyantra.order_history WHERE strategy_name=%(s)s ORDER BY submitted_at DESC LIMIT 50",
+                {'s': strategy_name}
+            )
+            return {
+                'positions': final_positions,
+                'orders': final_orders,
+                'duration_seconds': (datetime.now() - start).total_seconds()
+            }
+        except Exception as e:
+            logger.error(f"Snapshot error after polling: {e}")
+            return {'error': str(e)}

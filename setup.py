@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="braintransactions",
-    version="0.1.0",
+    version="1.0.0",
     description="Modular transactional system for financial operations - Blessed by Goddess Laxmi",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

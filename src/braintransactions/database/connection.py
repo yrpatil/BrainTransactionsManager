@@ -70,6 +70,13 @@ class DatabaseManager:
                 **self.get_connection_params(),
                 cursor_factory=psycopg2.extras.RealDictCursor
             )
+            # Ensure search_path points to configured schema first
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute(f"SET search_path TO {self.config.db_schema}, public")
+                    connection.commit()
+            except Exception as e:
+                logger.warning(f"Could not set search_path to schema {self.config.db_schema}: {str(e)}")
             self.current_connections += 1
             logger.debug(f"Database connection established (active: {self.current_connections})")
             yield connection
@@ -274,10 +281,14 @@ class DatabaseManager:
             True if successful, False otherwise
         """
         try:
+            schema = self.config.db_schema
+            # Ensure schema exists
+            self.execute_action(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+
             tables_sql = [
                 # Portfolio positions table
-                """
-                CREATE TABLE IF NOT EXISTS portfolio_positions (
+                f"""
+                CREATE TABLE IF NOT EXISTS {schema}.portfolio_positions (
                     id SERIAL PRIMARY KEY,
                     strategy_name VARCHAR(255) NOT NULL,
                     ticker VARCHAR(50) NOT NULL,
@@ -290,8 +301,8 @@ class DatabaseManager:
                 """,
                 
                 # Order history table
-                """
-                CREATE TABLE IF NOT EXISTS order_history (
+                f"""
+                CREATE TABLE IF NOT EXISTS {schema}.order_history (
                     id SERIAL PRIMARY KEY,
                     order_id VARCHAR(255) UNIQUE,
                     client_order_id VARCHAR(255),
@@ -314,8 +325,8 @@ class DatabaseManager:
                 """,
                 
                 # Transaction log table
-                """
-                CREATE TABLE IF NOT EXISTS transaction_log (
+                f"""
+                CREATE TABLE IF NOT EXISTS {schema}.transaction_log (
                     id SERIAL PRIMARY KEY,
                     transaction_id VARCHAR(255) UNIQUE NOT NULL,
                     module_name VARCHAR(100) NOT NULL,

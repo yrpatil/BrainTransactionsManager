@@ -228,6 +228,66 @@ class PortfolioManager(KillSwitchMixin):
         except Exception as e:
             logger.error(f"Error getting portfolio summary: {str(e)}")
             return {}
+
+    def get_strategy_summary(self, strategy_name: str) -> Dict[str, Any]:
+        """
+        Get a concise strategy summary combining positions and orders.
+        Returns counts and timestamps useful for monitoring.
+        """
+        try:
+            # Positions summary
+            pos_query = """
+                SELECT 
+                    COUNT(*)::int AS total_positions,
+                    COALESCE(SUM(quantity), 0) AS total_quantity,
+                    COALESCE(AVG(avg_entry_price), 0) AS avg_entry_price,
+                    MAX(last_updated) AS last_position_update
+                FROM portfolio_positions
+                WHERE strategy_name = %(strategy)s
+            """
+            pos_summary = self.db.execute_single(pos_query, {"strategy": strategy_name}) or {}
+
+            # Order counts
+            order_counts_query = """
+                SELECT 
+                    COUNT(*) FILTER (WHERE status = 'pending')::int AS pending_orders,
+                    COUNT(*) FILTER (WHERE status = 'filled')::int AS filled_orders,
+                    COUNT(*) FILTER (WHERE status = 'cancelled')::int AS cancelled_orders,
+                    COUNT(*)::int AS total_orders,
+                    MAX(submitted_at) AS last_order_time
+                FROM order_history
+                WHERE strategy_name = %(strategy)s
+            """
+            order_counts = self.db.execute_single(order_counts_query, {"strategy": strategy_name}) or {}
+
+            # Recent fills in last 24h
+            fills_24h_query = """
+                SELECT COUNT(*)::int AS fills_24h
+                FROM order_history
+                WHERE strategy_name = %(strategy)s
+                  AND status = 'filled'
+                  AND submitted_at >= NOW() - INTERVAL '24 hours'
+            """
+            fills_24h = self.db.execute_single(fills_24h_query, {"strategy": strategy_name}) or {"fills_24h": 0}
+
+            summary: Dict[str, Any] = {
+                "strategy_name": strategy_name,
+                "total_positions": pos_summary.get("total_positions", 0) or 0,
+                "total_quantity": float(pos_summary.get("total_quantity", 0) or 0),
+                "avg_entry_price": float(pos_summary.get("avg_entry_price", 0) or 0),
+                "last_position_update": pos_summary.get("last_position_update"),
+                "pending_orders": order_counts.get("pending_orders", 0) or 0,
+                "filled_orders": order_counts.get("filled_orders", 0) or 0,
+                "cancelled_orders": order_counts.get("cancelled_orders", 0) or 0,
+                "total_orders": order_counts.get("total_orders", 0) or 0,
+                "last_order_time": order_counts.get("last_order_time"),
+                "fills_24h": fills_24h.get("fills_24h", 0) or 0,
+                "timestamp": datetime.now().isoformat(),
+            }
+            return summary
+        except Exception as e:
+            logger.error(f"Error getting strategy summary: {str(e)}")
+            return {"strategy_name": strategy_name, "error": str(e)}
     
     def close_all_positions(self, strategy_name: str) -> bool:
         """
@@ -303,6 +363,37 @@ class PortfolioManager(KillSwitchMixin):
                 'error': str(e),
                 'timestamp': datetime.now().isoformat()
             }
+
+    def reconcile_positions_from_alpaca(self, alpaca_positions: Optional[list], strategy_name: str = 'default') -> bool:
+        """Reconcile DB positions with Alpaca positions (overwrite DB snapshot).
+        Minimal approach: upsert each Alpaca position; remove any DB positions not present in Alpaca.
+        """
+        try:
+            if alpaca_positions is None:
+                return True
+            # Build set for present tickers
+            present = set()
+            for p in alpaca_positions:
+                symbol = getattr(p, 'symbol', None) or getattr(p, 'asset_id', None)
+                qty = float(getattr(p, 'qty', 0))
+                avg = float(getattr(p, 'avg_entry_price', 0) or 0)
+                if not symbol:
+                    continue
+                present.add(symbol)
+                if qty <= 0:
+                    self.update_position(strategy_name, symbol, 0)
+                else:
+                    self.update_position(strategy_name, symbol, qty, avg)
+            # Remove positions missing from Alpaca for default strategy
+            all_df = self.get_all_positions(strategy_name)
+            if not all_df.empty:
+                for _, row in all_df.iterrows():
+                    if row['ticker'] not in present:
+                        self.update_position(strategy_name, row['ticker'], 0)
+            return True
+        except Exception as e:
+            logger.error(f"Error during position reconciliation: {str(e)}")
+            return False
     
     def health_check(self) -> Dict[str, Any]:
         """

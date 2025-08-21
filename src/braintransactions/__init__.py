@@ -21,6 +21,7 @@ from .core.exceptions import (
 
 # Main transaction modules
 from .modules.laxmi_yantra import LaxmiYantra
+from .markets.facade import TradingFacade
 
 __all__ = [
     # Core
@@ -35,6 +36,8 @@ __all__ = [
     
     # Transaction Modules
     "LaxmiYantra",
+    # Facade
+    "TradingFacade",
 ]
 
 # Blessed by Goddess Laxmi 🙏

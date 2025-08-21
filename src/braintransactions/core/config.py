@@ -71,6 +71,7 @@ class BrainConfig:
         'DB_NAME': 'braintransactions',
         'DB_USER': 'brain_user',
         'DB_PASSWORD': 'brain_password',
+        'DB_SCHEMA': 'laxmiyantra',
         'LOG_LEVEL': 'INFO',
         'LOG_FILE_PATH': 'logs/braintransactions.log',
         'PAPER_TRADING': 'true',
@@ -124,6 +125,7 @@ class BrainConfig:
         self.db_name = os.getenv('DB_NAME', self.OPTIONAL_ENV_VARS['DB_NAME'])
         self.db_user = os.getenv('DB_USER', self.OPTIONAL_ENV_VARS['DB_USER'])
         self.db_password = os.getenv('DB_PASSWORD', self.OPTIONAL_ENV_VARS['DB_PASSWORD'])
+        self.db_schema = os.getenv('DB_SCHEMA', self.OPTIONAL_ENV_VARS['DB_SCHEMA'])
         self.db_url = f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
         
         # Logging configuration
@@ -146,6 +148,8 @@ class BrainConfig:
         # Convenience properties
         self.paper_trading = self.transaction_config.paper_trading
         self.paper_trading_capital = self.transaction_config.paper_trading_capital
+        # Simulation controls
+        self.simulate_immediate_fill = os.getenv('SIMULATE_IMMEDIATE_FILL', 'false').lower() == 'true'
         
         # Optional configurations
         self.telegram_bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -210,6 +214,7 @@ class BrainConfig:
             'database': self.db_name,
             'user': self.db_user,
             'password': self.db_password,
+            'schema': self.db_schema,
             'url': self.db_url
         }
     
