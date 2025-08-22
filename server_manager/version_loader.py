@@ -535,6 +535,58 @@ class VersionLoader:
                     "details": str(e),
                     "version": version
                 }
+
+        # Trading tool endpoints
+        @app.post("/tools/buy_stock")
+        async def buy_stock(payload: Dict[str, Any]):
+            try:
+                trading_manager = self._get_trading_manager()
+                ticker = payload.get('ticker')
+                quantity = payload.get('quantity')
+                strategy_name = payload.get('strategy_name', 'test_strategy')
+                order_type = payload.get('order_type', 'market')
+                if not ticker or quantity is None:
+                    return {"error": "ticker and quantity are required"}
+                result = trading_manager.buy(ticker, float(quantity), strategy_name=strategy_name, order_type=order_type)
+                return self.serialize_result(result)
+            except Exception as e:
+                logger.error(f"buy_stock error: {e}")
+                return {"error": str(e), "version": version}
+
+        @app.post("/tools/sell_stock")
+        async def sell_stock(payload: Dict[str, Any]):
+            try:
+                trading_manager = self._get_trading_manager()
+                ticker = payload.get('ticker')
+                quantity = payload.get('quantity')
+                strategy_name = payload.get('strategy_name', 'test_strategy')
+                order_type = payload.get('order_type', 'market')
+                if not ticker or quantity is None:
+                    return {"error": "ticker and quantity are required"}
+                result = trading_manager.sell(ticker, float(quantity), strategy_name=strategy_name, order_type=order_type)
+                return self.serialize_result(result)
+            except Exception as e:
+                logger.error(f"sell_stock error: {e}")
+                return {"error": str(e), "version": version}
+
+        @app.post("/tools/execute_trade")
+        async def execute_trade(payload: Dict[str, Any]):
+            try:
+                trading_manager = self._get_trading_manager()
+                # Normalize payload: allow 'side' alias for 'action'
+                data = dict(payload or {})
+                if 'action' not in data and 'side' in data:
+                    data['action'] = str(data['side']).lower()
+                if 'strategy_name' not in data:
+                    data['strategy_name'] = 'test_strategy'
+                # Basic validation
+                if not data.get('ticker') or data.get('quantity') is None or not data.get('action'):
+                    return {"error": "ticker, quantity and action (or side) are required", "version": version}
+                result = trading_manager.execute_transaction(data)
+                return self.serialize_result(result)
+            except Exception as e:
+                logger.error(f"execute_trade error: {e}")
+                return {"error": str(e), "version": version}
                 
         # Add basic portfolio summary
         @app.get("/resources/portfolio_summary")

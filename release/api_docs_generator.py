@@ -313,26 +313,95 @@ All endpoints use the pattern: `http://127.0.0.1:8000/{version}/{{endpoint_type}
         """Generate minimal, precise endpoint docs with usage, params, and sample outputs."""
         sections = ["## 📋 Endpoints (Concise)\n"]
         # Build from introspected routes if available
-        def add_endpoint(title: str, method: str, path: str, desc: str, params: Optional[List[str]] = None):
+        def add_endpoint(title: str, method: str, path: str, desc: str, params: Optional[List[str]] = None, example_override: Optional[str] = None):
             params_str = ", ".join(params) if params else "None"
             curl = f"curl -s -X {method} http://127.0.0.1:8000{path}"
             if method in ("POST", "PUT", "PATCH"):
                 curl += " -H 'Content-Type: application/json' -d '{}'"
+            example_block = example_override if example_override else f"```bash\n{curl}\n```\n"
             sections.append(
-                f"### {title}\n- **method**: {method}\n- **path**: {path}\n- **description**: {desc}\n- **params**: {params_str}\n\n```bash\n{curl}\n```\n"
+                f"### {title}\n- **method**: {method}\n- **path**: {path}\n- **description**: {desc}\n- **params**: {params_str}\n\n{example_block}"
             )
         # Tools
         tools = endpoints.get('tools', [])
         if tools and isinstance(tools[0], dict):
             sections.append("### Tools\n")
             for t in tools:
+                title = t['path'].split('/')[-1]
+                method = next((m for m in t['methods'] if m != 'HEAD'), 'POST')
+                desc = "Execute tool"
+                params = ["JSON body"]
+                example = None
+                if title == 'buy_stock':
+                    desc = "Place a buy order (defaults: strategy_name=test_strategy, order_type=market)"
+                    params = [
+                        "ticker (string)",
+                        "quantity (number)",
+                        "strategy_name (string, optional)",
+                        "order_type (market|limit|stop|stop_limit, optional)",
+                        "price (number, required for limit/stop_limit)"
+                    ]
+                    example = (
+                        "```bash\n"
+                        f"curl -s -X POST http://127.0.0.1:8000{t['path']} \\\n"
+                        "  -H 'Content-Type: application/json' \\\n"
+                        "  -d '{\"ticker\":\"AAPL\",\"quantity\":1,\"strategy_name\":\"test_strategy\",\"order_type\":\"market\"}'\n"
+                        "```\n"
+                    )
+                elif title == 'sell_stock':
+                    desc = "Place a sell order (use bracket/OTO for exits if wash-trade is blocked)"
+                    params = [
+                        "ticker (string)",
+                        "quantity (number)",
+                        "strategy_name (string, optional)",
+                        "order_type (market|limit|stop|stop_limit, optional)",
+                        "price (number, required for limit/stop_limit)"
+                    ]
+                    example = (
+                        "```bash\n"
+                        f"curl -s -X POST http://127.0.0.1:8000{t['path']} \\\n"
+                        "  -H 'Content-Type: application/json' \\\n"
+                        "  -d '{\"ticker\":\"AAPL\",\"quantity\":1,\"strategy_name\":\"test_strategy\",\"order_type\":\"market\"}'\n"
+                        "```\n"
+                    )
+                elif title == 'execute_trade':
+                    desc = "Advanced trade execution; accepts side alias (auto-normalized to action). Optional legs allowed."
+                    params = [
+                        "strategy_name (string, default test_strategy)",
+                        "ticker (string)",
+                        "side (buy|sell)",
+                        "quantity (number)",
+                        "order_type (market|limit|stop|stop_limit)",
+                        "price (number, required for limit/stop_limit)",
+                        "order_class (bracket|oto, optional)",
+                        "take_profit (object {limit_price}, optional)",
+                        "stop_loss (object {stop_price, limit_price}, optional)",
+                        "time_in_force (string, optional)"
+                    ]
+                    example = (
+                        "```bash\n"
+                        f"# Limit buy\n"
+                        f"curl -s -X POST http://127.0.0.1:8000{t['path']} \\\n"
+                        "  -H 'Content-Type: application/json' \\\n"
+                        "  -d '{\"strategy_name\":\"test_strategy\",\"ticker\":\"AAPL\",\"side\":\"buy\",\"quantity\":1,\"order_type\":\"limit\",\"price\":150.00}'\n\n"
+                        f"# Single-leg OTO sell (take-profit only)\n"
+                        f"curl -s -X POST http://127.0.0.1:8000{t['path']} \\\n"
+                        "  -H 'Content-Type: application/json' \\\n"
+                        "  -d '{\"strategy_name\":\"test_strategy\",\"ticker\":\"AAPL\",\"side\":\"sell\",\"quantity\":1,\"order_type\":\"market\",\"order_class\":\"bracket\",\"take_profit\":{\"limit_price\":140.00}}'\n"
+                        "```\n"
+                    )
                 add_endpoint(
-                    title=t['path'].split('/')[-1],
-                    method=next((m for m in t['methods'] if m != 'HEAD'), 'POST'),
+                    title=title,
+                    method=method,
                     path=t['path'],
-                    desc="Execute tool",
-                    params=["JSON body"]
+                    desc=desc,
+                    params=params,
+                    example_override=example
                 )
+                continue
+                
+                # Default
+                add_endpoint(title=title, method=method, path=t['path'], desc=desc, params=params)
         else:
             # Fallback to defaults
             for tool in self.get_default_endpoints(version).get('tools', []):
@@ -376,6 +445,18 @@ All endpoints use the pattern: `http://127.0.0.1:8000/{version}/{{endpoint_type}
                     desc="Analytics endpoint",
                     params=["query string"]
                 )
+        # Agent guide endpoint
+        for r in endpoints.get('health', []) + endpoints.get('resources', []) + endpoints.get('tools', []):
+            # Nothing
+            pass
+        sections.append("### Guide\n")
+        add_endpoint(
+            title='get_agent_guide',
+            method='GET',
+            path=f"/{version}/get_agent_guide",
+            desc='Fetch the concise AI agent usage guide (Markdown)',
+            params=[]
+        )
         return "\n".join(sections)
 
     def generate_tools_doc_from_routes(self, routes: List[Dict]) -> str:

@@ -35,6 +35,48 @@
 curl -s -X POST http://127.0.0.1:8000/v1.1.1/tools/get_account_status -H 'Content-Type: application/json' -d '{}'
 ```
 
+### buy_stock
+- **method**: POST
+- **path**: /v1.1.1/tools/buy_stock
+- **description**: Place a buy order (defaults: strategy_name=test_strategy, order_type=market)
+- **params**: ticker (string), quantity (number), strategy_name (string, optional), order_type (market|limit|stop|stop_limit, optional), price (number, required for limit/stop_limit)
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/v1.1.1/tools/buy_stock \
+  -H 'Content-Type: application/json' \
+  -d '{"ticker":"AAPL","quantity":1,"strategy_name":"test_strategy","order_type":"market"}'
+```
+
+### sell_stock
+- **method**: POST
+- **path**: /v1.1.1/tools/sell_stock
+- **description**: Place a sell order (use bracket/OTO for exits if wash-trade is blocked)
+- **params**: ticker (string), quantity (number), strategy_name (string, optional), order_type (market|limit|stop|stop_limit, optional), price (number, required for limit/stop_limit)
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/v1.1.1/tools/sell_stock \
+  -H 'Content-Type: application/json' \
+  -d '{"ticker":"AAPL","quantity":1,"strategy_name":"test_strategy","order_type":"market"}'
+```
+
+### execute_trade
+- **method**: POST
+- **path**: /v1.1.1/tools/execute_trade
+- **description**: Advanced trade execution; accepts side alias (auto-normalized to action). Optional legs allowed.
+- **params**: strategy_name (string, default test_strategy), ticker (string), side (buy|sell), quantity (number), order_type (market|limit|stop|stop_limit), price (number, required for limit/stop_limit), order_class (bracket|oto, optional), take_profit (object {limit_price}, optional), stop_loss (object {stop_price, limit_price}, optional), time_in_force (string, optional)
+
+```bash
+# Limit buy
+curl -s -X POST http://127.0.0.1:8000/v1.1.1/tools/execute_trade \
+  -H 'Content-Type: application/json' \
+  -d '{"strategy_name":"test_strategy","ticker":"AAPL","side":"buy","quantity":1,"order_type":"limit","price":150.00}'
+
+# Single-leg OTO sell (take-profit only)
+curl -s -X POST http://127.0.0.1:8000/v1.1.1/tools/execute_trade \
+  -H 'Content-Type: application/json' \
+  -d '{"strategy_name":"test_strategy","ticker":"AAPL","side":"sell","quantity":1,"order_type":"market","order_class":"bracket","take_profit":{"limit_price":140.00}}'
+```
+
 ### Resources
 
 ### account_info
@@ -109,6 +151,18 @@ curl -s -X GET http://127.0.0.1:8000/v1.1.1/analytics/performance/kpis
 curl -s -X GET http://127.0.0.1:8000/v1.1.1/analytics/performance/top_movers
 ```
 
+### Guide
+
+### get_agent_guide
+- **method**: GET
+- **path**: /v1.1.1/get_agent_guide
+- **description**: Fetch the concise AI agent usage guide (Markdown)
+- **params**: None
+
+```bash
+curl -s -X GET http://127.0.0.1:8000/v1.1.1/get_agent_guide
+```
+
 
 ## 📊 Response Samples (Live)
 
@@ -138,4 +192,4 @@ curl -s -X GET http://127.0.0.1:8000/v1.1.1/analytics/performance/top_movers
 
 ---
 
-**🙏 Generated on 2025-08-22 23:24:50 - Blessed by Goddess Laxmi for Infinite Abundance**
+**🙏 Generated on 2025-08-23 01:01:38 - Blessed by Goddess Laxmi for Infinite Abundance**
