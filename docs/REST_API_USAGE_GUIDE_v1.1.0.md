@@ -1,13 +1,13 @@
-# Laxmi-yantra Trading API v1.0.0 - AI Agent Usage Guide
+# Laxmi-yantra Trading API v1.1.0 - AI Agent Usage Guide
 
-**🎯 Purpose**: Complete guide for AI agents to optimally use the Laxmi-yantra Trading API v1.0.0
+**🎯 Purpose**: Complete guide for AI agents to optimally use the Laxmi-yantra Trading API v1.1.0
 **📅 Release Date**: 2025-08-22
 **🔄 Status**: Stable
 **🤖 Optimized for**: AI Agents, Automated Trading, Algorithmic Systems
 
 
 
-> **Disclaimer**: This documentation is version-specific for v1.0.0. 
+> **Disclaimer**: This documentation is version-specific for v1.1.0. 
 > Endpoints, fields, and behaviors may differ between API versions. 
 > Always verify against live server responses for the most accurate information.
 
@@ -39,80 +39,206 @@ curl -s http://127.0.0.1:8000/health
 curl -s http://127.0.0.1:8000/versions
 
 # Check specific version health
-curl -s http://127.0.0.1:8000/v1.0.0/health
+curl -s http://127.0.0.1:8000/v1.1.0/health
 ```
 
 ### 3. Basic Authentication Test
 ```bash
 # Verify account access
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/get_account_status \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/get_account_status \
   -H 'Content-Type: application/json' -d '{}'
 ```
 
 ### 4. First Trading Action
 ```bash
 # Get current portfolio state
-curl -s http://127.0.0.1:8000/v1.0.0/resources/portfolio_summary
+curl -s http://127.0.0.1:8000/v1.1.0/resources/portfolio_summary
 
 # Execute a small test trade
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/buy_stock \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/buy_stock \
   -H 'Content-Type: application/json' \
   -d '{"ticker":"AAPL","quantity":1,"strategy_name":"test_strategy"}'
 ```
 
 ### Base URL Structure
-All endpoints use the pattern: `http://127.0.0.1:8000/v1.0.0/{endpoint_type}/{endpoint_name}`
+All endpoints use the pattern: `http://127.0.0.1:8000/v1.1.0/{endpoint_type}/{endpoint_name}`
 
-- **Tools** (Actions): `POST /v1.0.0/tools/{tool_name}`
-- **Resources** (Data): `GET /v1.0.0/resources/{resource_name}`
-- **Health**: `GET /v1.0.0/health`
+- **Tools** (Actions): `POST /v1.1.0/tools/{tool_name}`
+- **Resources** (Data): `GET /v1.1.0/resources/{resource_name}`
+- **Health**: `GET /v1.1.0/health`
 
 
 ## 📋 Endpoints Reference
 
 ### Tools (POST - Actions)
 
+#### `POST /v1.1.0/tools/buy_stock`
+**Description**: Execute stock purchase with market or limit orders
+**Required Parameters**: ticker, quantity, strategy_name
+**Optional Parameters**: order_type, price, time_in_force
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/buy_stock \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "ticker": "AAPL",
+  "quantity": 10,
+  "strategy_name": "ai_agent_strategy",
+  "order_type": "market"
+}'
+```
+
+
+#### `POST /v1.1.0/tools/sell_stock`
+**Description**: Execute stock sale with market or limit orders
+**Required Parameters**: ticker, quantity, strategy_name
+**Optional Parameters**: order_type, price, time_in_force
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/sell_stock \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "ticker": "AAPL",
+  "quantity": 5,
+  "strategy_name": "ai_agent_strategy",
+  "order_type": "limit",
+  "price": 175.5
+}'
+```
+
+
+#### `POST /v1.1.0/tools/execute_trade`
+**Description**: Advanced trade execution with full control
+**Required Parameters**: strategy_name, ticker, side, quantity, order_type
+**Optional Parameters**: price, time_in_force, extended_hours
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/execute_trade \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "strategy_name": "ai_agent_strategy",
+  "ticker": "TSLA",
+  "side": "buy",
+  "quantity": 2,
+  "order_type": "limit",
+  "price": 250.0
+}'
+```
+
+
+#### `POST /v1.1.0/tools/get_account_status`
+**Description**: Retrieve account information and trading status
+**Required Parameters**: None
+**Optional Parameters**: None
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/get_account_status \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+
+#### `POST /v1.1.0/tools/get_recent_orders`
+**Description**: Get recent order history with optional limit
+**Required Parameters**: None
+**Optional Parameters**: limit, strategy_name
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/get_recent_orders \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "limit": 20
+}'
+```
+
+
+#### `POST /v1.1.0/tools/activate_kill_switch`
+**Description**: Emergency stop - halt all trading operations
+**Required Parameters**: reason
+**Optional Parameters**: None
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/activate_kill_switch \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "reason": "Emergency stop requested by AI agent"
+}'
+```
+
+
+#### `POST /v1.1.0/tools/deactivate_kill_switch`
+**Description**: Resume trading operations after kill switch
+**Required Parameters**: None
+**Optional Parameters**: None
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/deactivate_kill_switch \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+
+#### `POST /v1.1.0/tools/get_kill_switch_status`
+**Description**: Check current kill switch status
+**Required Parameters**: None
+**Optional Parameters**: None
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/get_kill_switch_status \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
 
 ### Resources (GET - Data Retrieval)  
 
-#### `GET /v1.0.0/resources/account_info`
-**Description**: Get account information
+#### `GET /v1.1.0/resources/account_info`
+**Description**: Account details and trading permissions
 **Query Parameters**: None
 
 ```bash
-curl -s http://127.0.0.1:8000/v1.0.0/resources/account_info
+curl -s http://127.0.0.1:8000/v1.1.0/resources/account_info
 ```
 
 
-#### `GET /v1.0.0/resources/current_positions`
-**Description**: Get current positions information
+#### `GET /v1.1.0/resources/current_positions`
+**Description**: Live positions from broker (real-time)
 **Query Parameters**: None
 
 ```bash
-curl -s http://127.0.0.1:8000/v1.0.0/resources/current_positions
+curl -s http://127.0.0.1:8000/v1.1.0/resources/current_positions
 ```
 
 
-#### `GET /v1.0.0/resources/portfolio_summary`
-**Description**: Get portfolio summary information
-**Query Parameters**: None
+#### `GET /v1.1.0/resources/portfolio_summary`
+**Description**: Portfolio overview from database with PnL calculations
+**Query Parameters**: strategy_name (optional)
 
 ```bash
-curl -s http://127.0.0.1:8000/v1.0.0/resources/portfolio_summary
+curl -s http://127.0.0.1:8000/v1.1.0/resources/portfolio_summary?strategy_name=ai_strategy
 ```
 
 
-#### `GET /v1.0.0/resources/system_health`
-**Description**: Get system health information
+#### `GET /v1.1.0/resources/strategy_summary`
+**Description**: Comprehensive strategy analytics with holdings and performance
+**Query Parameters**: strategy_name (required)
+
+```bash
+curl -s http://127.0.0.1:8000/v1.1.0/resources/strategy_summary?strategy_name=ai_strategy
+```
+
+
+#### `GET /v1.1.0/resources/system_health`
+**Description**: System status, connectivity, and health metrics
 **Query Parameters**: None
 
 ```bash
-curl -s http://127.0.0.1:8000/v1.0.0/resources/system_health
+curl -s http://127.0.0.1:8000/v1.1.0/resources/system_health
 ```
 
 
 ### System Endpoints
-- `GET /v1.0.0/health` - Version-specific health check
+- `GET /v1.1.0/health` - Version-specific health check
 - `GET /health` - Global multi-version health check
 - `GET /versions` - List all available API versions
 - `GET /` - API information and navigation
@@ -123,9 +249,9 @@ curl -s http://127.0.0.1:8000/v1.0.0/resources/system_health
 ### Complete Trading Workflow
 ```bash
 #!/bin/bash
-# AI Agent Trading Workflow for API v1.0.0
+# AI Agent Trading Workflow for API v1.1.0
 
-BASE_URL="http://127.0.0.1:8000/v1.0.0"
+BASE_URL="http://127.0.0.1:8000/v1.1.0"
 
 # 1. Health and connectivity check
 echo "Checking system health..."
@@ -167,7 +293,7 @@ import requests
 import json
 
 class LaxmiYantraAgent:
-    def __init__(self, base_url="http://127.0.0.1:8000/v1.0.0"):
+    def __init__(self, base_url="http://127.0.0.1:8000/v1.1.0"):
         self.base_url = base_url
         self.strategy_name = "ai_agent"
         
@@ -234,7 +360,7 @@ if agent.health_check()['status'] == 'healthy':
 ### Risk Management Pattern
 ```bash
 # Emergency procedures for AI agents
-BASE_URL="http://127.0.0.1:8000/v1.0.0"
+BASE_URL="http://127.0.0.1:8000/v1.1.0"
 
 # 1. Check kill switch status before any trades
 KILL_STATUS=$(curl -s -X POST "$BASE_URL/tools/get_kill_switch_status" \
@@ -276,26 +402,26 @@ fi
   "error": "Descriptive error message",
   "details": "Additional context when available",
   "timestamp": "2025-01-21T12:00:00Z",
-  "version": "v1.0.0"
+  "version": "v1.1.0"
 }
 ```
 
 ### Common Business Errors (400)
 ```bash
 # Insufficient position for sell
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/sell_stock \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/sell_stock \
   -H 'Content-Type: application/json' \
   -d '{"ticker":"AAPL","quantity":1000,"strategy_name":"test"}'
 # Response: {"error": "Insufficient position. Current: 0, Requested: 1000"}
 
 # Invalid ticker
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/buy_stock \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/buy_stock \
   -H 'Content-Type: application/json' \
   -d '{"ticker":"INVALID","quantity":1,"strategy_name":"test"}'
 # Response: {"error": "Invalid ticker symbol: INVALID"}
 
 # Missing required parameter
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/buy_stock \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/buy_stock \
   -H 'Content-Type: application/json' \
   -d '{"ticker":"AAPL","quantity":1}'
 # Response: {"error": "Missing required parameter: strategy_name"}
@@ -304,7 +430,7 @@ curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/buy_stock \
 ### Kill Switch Errors
 ```bash
 # Trading when kill switch is active
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/buy_stock \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/buy_stock \
   -H 'Content-Type: application/json' \
   -d '{"ticker":"AAPL","quantity":1,"strategy_name":"test"}'
 # Response: {"error": "Trading is currently disabled due to active kill switch"}
@@ -359,21 +485,21 @@ else:
 ### 1. Always Check Health First
 ```bash
 # Never start trading without health verification
-curl -s http://127.0.0.1:8000/v1.0.0/health
+curl -s http://127.0.0.1:8000/v1.1.0/health
 ```
 
 ### 2. Use Strategy-Specific Operations
 ```bash
 # Always specify strategy_name for tracking and risk management
 STRATEGY="ai_agent_$(date +%Y%m%d)"
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/buy_stock \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/buy_stock \
   -d '{"ticker":"AAPL","quantity":1,"strategy_name":"'$STRATEGY'"}'
 ```
 
 ### 3. Monitor Portfolio State Continuously
 ```bash
 # Get comprehensive strategy analytics before major decisions
-curl -s "http://127.0.0.1:8000/v1.0.0/resources/strategy_summary?strategy_name=$STRATEGY"
+curl -s "http://127.0.0.1:8000/v1.1.0/resources/strategy_summary?strategy_name=$STRATEGY"
 ```
 
 ### 4. Implement Position Sizing
@@ -388,7 +514,7 @@ def calculate_position_size(portfolio_value, risk_per_trade=0.02):
 ### 5. Use Limit Orders for Better Control
 ```bash
 # Prefer limit orders over market orders for better price control
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/buy_stock \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/buy_stock \
   -d '{
     "ticker": "AAPL",
     "quantity": 10,
@@ -478,7 +604,7 @@ if is_market_open():
 ```bash
 # Emergency kill switch activation
 emergency_stop() {
-  curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/activate_kill_switch \
+  curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/activate_kill_switch \
     -H 'Content-Type: application/json' \
     -d '{"reason":"AI agent emergency stop - unusual market conditions"}'
 }
@@ -496,14 +622,14 @@ curl -s http://127.0.0.1:8000/health
 # Expected: {"status": "healthy", ...}
 
 # Test version-specific endpoint
-curl -s http://127.0.0.1:8000/v1.0.0/health
+curl -s http://127.0.0.1:8000/v1.1.0/health
 # Expected: Version-specific health data
 ```
 
 ### Authentication Issues
 ```bash
 # Check if credentials are loaded
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/get_account_status \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/get_account_status \
   -H 'Content-Type: application/json' -d '{}'
 # Look for "ALPACA_API_KEY not found" or similar errors
 ```
@@ -511,11 +637,11 @@ curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/get_account_status \
 ### Trading Issues
 ```bash
 # Check kill switch status
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/get_kill_switch_status \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/get_kill_switch_status \
   -H 'Content-Type: application/json' -d '{}'
 
 # Verify account has buying power
-curl -s http://127.0.0.1:8000/v1.0.0/resources/account_info
+curl -s http://127.0.0.1:8000/v1.1.0/resources/account_info
 ```
 
 ### Version Issues
@@ -524,7 +650,7 @@ curl -s http://127.0.0.1:8000/v1.0.0/resources/account_info
 curl -s http://127.0.0.1:8000/versions
 
 # Check if your version is active
-curl -s http://127.0.0.1:8000/versions | jq '.active_versions[]' | grep "v1.0.0"
+curl -s http://127.0.0.1:8000/versions | jq '.active_versions[]' | grep "v1.1.0"
 ```
 
 ### Database Sync Issues
@@ -533,8 +659,8 @@ curl -s http://127.0.0.1:8000/versions | jq '.active_versions[]' | grep "v1.0.0"
 # Look for "PORTFOLIO_EVENT_POLLING_ENABLED=true" in logs
 
 # Compare broker vs database positions
-curl -s http://127.0.0.1:8000/v1.0.0/resources/current_positions > broker_positions.json
-curl -s http://127.0.0.1:8000/v1.0.0/resources/portfolio_summary > db_positions.json
+curl -s http://127.0.0.1:8000/v1.1.0/resources/current_positions > broker_positions.json
+curl -s http://127.0.0.1:8000/v1.1.0/resources/portfolio_summary > db_positions.json
 ```
 
 ### Common Error Solutions
@@ -547,7 +673,7 @@ curl -s http://127.0.0.1:8000/v1.0.0/resources/portfolio_summary > db_positions.
 #### "400 Bad Request: Insufficient position"
 ```bash
 # Check current holdings before selling
-curl -s "http://127.0.0.1:8000/v1.0.0/resources/strategy_summary?strategy_name=your_strategy"
+curl -s "http://127.0.0.1:8000/v1.1.0/resources/strategy_summary?strategy_name=your_strategy"
 ```
 
 #### "500 Internal Server Error"
@@ -573,24 +699,24 @@ tail -f logs/braintransactions.log | grep -i error
 ```bash
 # Comprehensive health check script
 #!/bin/bash
-echo "=== Laxmi-yantra API v1.0.0 Diagnostics ==="
+echo "=== Laxmi-yantra API v1.1.0 Diagnostics ==="
 
 echo "1. Basic connectivity..."
 curl -s http://127.0.0.1:8000/health | jq .
 
 echo "2. Version health..."
-curl -s http://127.0.0.1:8000/v1.0.0/health | jq .
+curl -s http://127.0.0.1:8000/v1.1.0/health | jq .
 
 echo "3. Account status..."
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/get_account_status \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/get_account_status \
   -H 'Content-Type: application/json' -d '{}' | jq .
 
 echo "4. Kill switch status..."
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/get_kill_switch_status \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/get_kill_switch_status \
   -H 'Content-Type: application/json' -d '{}' | jq .
 
 echo "5. Recent orders..."
-curl -s -X POST http://127.0.0.1:8000/v1.0.0/tools/get_recent_orders \
+curl -s -X POST http://127.0.0.1:8000/v1.1.0/tools/get_recent_orders \
   -H 'Content-Type: application/json' -d '{"limit":5}' | jq .
 
 echo "=== Diagnostics Complete ==="
@@ -599,13 +725,7 @@ echo "=== Diagnostics Complete ==="
 
 ## 📊 Response Samples
 
-> **Note**: These samples are specific to API v1.0.0. Field names, values, and structure may vary between versions.
-
-
-
-Disclaimer: These are representative, anonymized examples to help agents parse responses. Identifiers are masked and numeric values are illustrative only. Actual fields/values may vary at runtime based on market conditions, configuration, and future improvements.
-
-- Tool: get_account_status
+### Tool Response: get_account_status
 ```json
 {
   "account_status": "ACTIVE",
@@ -613,183 +733,39 @@ Disclaimer: These are representative, anonymized examples to help agents parse r
   "buying_power": 99750.23,
   "cash": 100000.00,
   "portfolio_value": 100250.75,
-  "paper_trading": true
+  "paper_trading": true,
+  "api_version": "v1.1.0"
 }
 ```
 
-- Tool: get_recent_orders (limit=2)
-```json
-[
-  {
-    "order_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-    "client_order_id": "masked",
-    "strategy_name": "agent_strategy",
-    "ticker": "AAPL",
-    "side": "buy",
-    "order_type": "market",
-    "quantity": 1.0,
-    "filled_quantity": 1.0,
-    "price": null,
-    "filled_avg_price": 172.15,
-    "status": "filled",
-    "submitted_at": "2025-08-21T23:07:22.646589",
-    "filled_at": "2025-08-21T23:07:22.900000",
-    "canceled_at": null,
-    "created_at": "2025-08-21T23:07:22.650000"
-  },
-  {
-    "order_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-    "client_order_id": "masked",
-    "strategy_name": "agent_strategy",
-    "ticker": "BTC/USD",
-    "side": "buy",
-    "order_type": "market",
-    "quantity": 0.001,
-    "filled_quantity": 0.001,
-    "price": null,
-    "filled_avg_price": 60050.0,
-    "status": "filled",
-    "submitted_at": "2025-08-21T23:05:05.120000",
-    "filled_at": "2025-08-21T23:05:05.300000",
-    "canceled_at": null,
-    "created_at": "2025-08-21T23:05:05.130000"
-  }
-]
-```
-
-- Resource: current_positions
-```json
-[
-  {
-    "symbol": "AAPL",
-    "quantity": 30.0,
-    "side": "long",
-    "market_value": 5160.0,
-    "avg_entry_price": 168.00,
-    "unrealized_pl": 120.0,
-    "unrealized_pl_pct": 2.38,
-    "current_price": 172.0
-  },
-  {
-    "symbol": "BTCUSD",
-    "quantity": 0.00349125,
-    "side": "long",
-    "market_value": 210.0,
-    "avg_entry_price": 60000.0,
-    "unrealized_pl": -0.5,
-    "unrealized_pl_pct": -0.24,
-    "current_price": 60100.0
-  }
-]
-```
-
-- Resource: portfolio_summary (strategy filter optional)
+### Resource Response: strategy_summary
 ```json
 {
-  "database_positions": 2,
-  "positions": [
+  "strategy_name": "ai_agent",
+  "total_positions": 2,
+  "holdings": [
     {
-      "strategy_name": "default",
       "ticker": "AAPL",
-      "quantity": 30.0,
-      "avg_entry_price": 168.0,
-      "last_updated": "2025-08-21T23:55:40.878000",
-      "created_at": "2025-08-20T12:00:00.000000",
+      "quantity": 10.0,
       "current_price": 172.0,
-      "cost_basis": 5040.0,
-      "market_value": 5160.0,
-      "unrealized_pl": 120.0,
-      "unrealized_pl_pct": 2.38,
-      "abs_unrealized_pl_pct": 2.38,
-      "pln": 120.0,
-      "pln_pct": 2.38,
-      "abs_pln_pct": 2.38
-    },
-    {
-      "strategy_name": "default",
-      "ticker": "BTCUSD",
-      "quantity": 0.00349125,
-      "avg_entry_price": 60000.0,
-      "last_updated": "2025-08-21T23:55:40.899000",
-      "created_at": "2025-08-20T12:10:00.000000",
-      "current_price": 60100.0,
-      "cost_basis": 209.475,
-      "market_value": 209.5575,
-      "unrealized_pl": 0.0825,
-      "unrealized_pl_pct": 0.0394,
-      "abs_unrealized_pl_pct": 0.0394,
-      "pln": 0.0825,
-      "pln_pct": 0.0394,
-      "abs_pln_pct": 0.0394
+      "cost_basis": 1680.0,
+      "market_value": 1720.0,
+      "unrealized_pl": 40.0,
+      "unrealized_pl_pct": 2.38
     }
   ],
   "totals": {
-    "total_positions": 2,
-    "total_quantity": 30.00349125,
-    "total_cost_basis": 5249.475,
-    "total_market_value": 5369.5575,
-    "net_unrealized_pl": 120.0825,
-    "net_unrealized_pl_pct": 2.29,
-    "abs_net_unrealized_pl_pct": 2.29,
-    "net_pln": 120.0825,
-    "net_pln_pct": 2.29,
-    "abs_net_pln_pct": 2.29
-  }
-}
-```
-
-- Resource: strategy_summary
-```json
-{
-  "strategy_name": "default",
-  "total_positions": 2,
-  "total_quantity": 30.00349125,
-  "avg_entry_price": 0.0,
-  "last_position_update": "2025-08-21T23:55:40.908000",
-  "pending_orders": 0,
-  "filled_orders": 4,
-  "cancelled_orders": 0,
-  "total_orders": 4,
-  "last_order_time": "2025-08-21T23:07:22.646589",
-  "fills_24h": 0,
-  "holdings": [
-    { "ticker": "AAPL", "quantity": 30.0, "avg_entry_price": 168.0, "current_price": 172.0,
-      "cost_basis": 5040.0, "market_value": 5160.0, "unrealized_pl": 120.0, "unrealized_pl_pct": 2.38,
-      "abs_unrealized_pl_pct": 2.38, "pln": 120.0, "pln_pct": 2.38, "abs_pln_pct": 2.38 },
-    { "ticker": "BTCUSD", "quantity": 0.00349125, "avg_entry_price": 60000.0, "current_price": 60100.0,
-      "cost_basis": 209.475, "market_value": 209.5575, "unrealized_pl": 0.0825, "unrealized_pl_pct": 0.0394,
-      "abs_unrealized_pl_pct": 0.0394, "pln": 0.0825, "pln_pct": 0.0394, "abs_pln_pct": 0.0394 }
-  ],
-  "totals": {
-    "total_positions": 2,
-    "total_quantity": 30.00349125,
-    "total_cost_basis": 5249.475,
-    "total_market_value": 5369.5575,
-    "net_unrealized_pl": 120.0825,
-    "net_unrealized_pl_pct": 2.29,
-    "abs_net_unrealized_pl_pct": 2.29,
-    "net_pln": 120.0825,
-    "net_pln_pct": 2.29,
-    "abs_net_pln_pct": 2.29
+    "total_cost_basis": 1680.0,
+    "total_market_value": 1720.0,
+    "net_unrealized_pl": 40.0,
+    "net_unrealized_pl_pct": 2.38
   },
-  "timestamp": "2025-08-21T23:44:42.865575"
+  "api_version": "v1.1.0",
+  "timestamp": "2025-01-21T12:00:00Z"
 }
 ```
 
-- Resource: system_health
-```json
-{
-  "account_status": "ACTIVE",
-  "trading_blocked": false,
-  "kill_switch_active": false,
-  "database_healthy": true,
-  "paper_trading": true,
-  "alpaca_connected": true,
-  "buying_power": 99750.23,
-  "cash": 100000.0
-}
-```
 
 ---
 
-**🙏 Generated on 2025-08-22 10:27:00 - Blessed by Goddess Laxmi for Infinite Abundance**
+**🙏 Generated on 2025-08-22 22:24:48 - Blessed by Goddess Laxmi for Infinite Abundance**

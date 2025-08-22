@@ -11,7 +11,7 @@ Use the launcher. It installs deps, ensures DB/schema/tables, and starts the ser
 ./start-server.sh TRANSPORT=stdio
 
 # http (recommended for API-style use)
-./start-server.sh TRANSPORT=http HOST=127.0.0.1 PORT=8000 MCP_PATH=/mcp
+./start-server.sh TRANSPORT=http HOST=127.0.0.1 PORT=8000
 
 # sse
 ./start-server.sh TRANSPORT=sse HOST=127.0.0.1 PORT=8001
@@ -35,12 +35,12 @@ The system auto-reconciles order statuses and broker positions via internal poll
 
 ### 3) Use over HTTP (simple JSON calls)
 
-Assume server = http://127.0.0.1:8000/mcp
+Assume server = http://127.0.0.1:8000/v1.0.0
 
 Place buy order (paper by default):
 ```bash
 curl -X POST \
-  http://127.0.0.1:8000/mcp/tools/buy_stock \
+  http://127.0.0.1:8000/v1.0.0/tools/buy_stock \
   -H 'Content-Type: application/json' \
   -d '{"ticker": "BTC/USD", "quantity": 0.001, "strategy_name": "agent_strategy"}'
 ```
@@ -48,49 +48,44 @@ curl -X POST \
 Place sell order:
 ```bash
 curl -X POST \
-  http://127.0.0.1:8000/mcp/tools/sell_stock \
+  http://127.0.0.1:8000/v1.0.0/tools/sell_stock \
   -H 'Content-Type: application/json' \
   -d '{"ticker": "BTC/USD", "quantity": 0.0005, "strategy_name": "agent_strategy"}'
 ```
 
 Account status:
 ```bash
-curl -X POST http://127.0.0.1:8000/mcp/tools/get_account_status -H 'Content-Type: application/json' -d '{}'
+curl -X POST http://127.0.0.1:8000/v1.0.0/tools/get_account_status -H 'Content-Type: application/json' -d '{}'
 ```
 
 Recent orders (limit N):
 ```bash
-curl -X POST http://127.0.0.1:8000/mcp/tools/get_recent_orders -H 'Content-Type: application/json' -d '{"limit": 10}'
+curl -X POST http://127.0.0.1:8000/v1.0.0/tools/get_recent_orders -H 'Content-Type: application/json' -d '{"limit": 10}'
 ```
 
 Portfolio snapshot (DB-based):
 ```bash
-curl -X GET http://127.0.0.1:8000/mcp/resources/portfolio_summary
+curl -X GET http://127.0.0.1:8000/v1.0.0/resources/portfolio_summary
 ```
 
 Kill switch (safety):
 ```bash
-curl -X POST http://127.0.0.1:8000/mcp/tools/activate_kill_switch \
+curl -X POST http://127.0.0.1:8000/v1.0.0/tools/activate_kill_switch \
   -H 'Content-Type: application/json' -d '{"reason": "emergency"}'
 ```
 
-### 4) Use via MCP (stdio) with a Python client
+### 4) Python usage example
 
 ```python
-from fastmcp import Client
+import requests
 
-async def main():
-    async with Client("python mcp-server/laxmi_mcp_server.py") as client:
-        # Buy
-        await client.call_tool("buy_stock", {
-            "ticker": "AAPL", "quantity": 1, "strategy_name": "agent_strategy"
-        })
-        # Portfolio summary (resource)
-        summary = await client.read_resource("laxmi://portfolio_summary")
-        print(summary.content[0].text)
+BASE_URL = "http://127.0.0.1:8000/v1.0.0"
+
+def get_account_status():
+    r = requests.post(f"{BASE_URL}/tools/get_account_status", json={})
+    r.raise_for_status()
+    return r.json()
 ```
-
-MCP config (example for Claude Desktop) can point command to `python mcp-server/laxmi_mcp_server.py` with required env vars.
 
 ### 5) Market support
 

@@ -50,7 +50,6 @@ source .venv/bin/activate
 echo "[3/5] Installing dependencies..."
 pip install -q --upgrade pip
 pip install -q -r requirements.txt
-pip install -q -r mcp-server/requirements.txt
 
 # Database setup
 echo "[4/5] Setting up database..."
@@ -73,7 +72,6 @@ if [ "$TRANSPORT" = "http" ]; then
     echo "🚀 Starting Multi-Version HTTP Server..."
     python multi_version_server.py
 else
-    echo "🚀 Starting legacy MCP Server..."
-    cd mcp-server
-    python laxmi_mcp_server.py
+    echo "❌ Legacy MCP transport has been removed. Please use TRANSPORT=http."
+    exit 1
 fi

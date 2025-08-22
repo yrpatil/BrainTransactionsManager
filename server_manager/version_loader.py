@@ -119,6 +119,36 @@ class VersionLoader:
         except Exception as e:
             logger.error(f"Account data access error: {e}")
             return {"error": str(e)}
+    
+    def _get_trading_manager(self):
+        """Create and return a trading manager from core modules without MCP."""
+        try:
+            # Ensure 'src' is on sys.path to import project modules
+            src_path = str(Path.cwd() / "src")
+            if src_path not in sys.path:
+                sys.path.insert(0, src_path)
+            # Import from core packages
+            from braintransactions.core.config import BrainConfig
+            from braintransactions.modules.laxmi_yantra.trading_manager import LaxmiYantra
+            config = BrainConfig()
+            return LaxmiYantra(config)
+        except Exception as e:
+            logger.error(f"Failed to initialize trading manager: {e}")
+            raise
+
+    def _get_db_manager(self):
+        """Create and return a database manager."""
+        try:
+            src_path = str(Path.cwd() / "src")
+            if src_path not in sys.path:
+                sys.path.insert(0, src_path)
+            from braintransactions.core.config import BrainConfig
+            from braintransactions.database.connection import DatabaseManager
+            config = BrainConfig()
+            return DatabaseManager(config)
+        except Exception as e:
+            logger.error(f"Failed to initialize database manager: {e}")
+            raise
             
     def create_development_app(self) -> FastAPI:
         """Create development app that mirrors current server functionality."""
@@ -141,10 +171,7 @@ class VersionLoader:
             @app.post("/tools/get_account_status")
             async def get_account_status():
                 try:
-                    sys.path.insert(0, str(Path.cwd() / "mcp-server"))
-                    import laxmi_mcp_server
-                    
-                    trading_manager = await laxmi_mcp_server.get_trading_manager()
+                    trading_manager = self._get_trading_manager()
                     result = await self.get_account_data(trading_manager)
                     return self.serialize_result(result)
                 except Exception as e:
@@ -154,10 +181,7 @@ class VersionLoader:
             @app.get("/resources/account_info")
             async def account_info():
                 try:
-                    sys.path.insert(0, str(Path.cwd() / "mcp-server"))
-                    import laxmi_mcp_server
-                    
-                    trading_manager = await laxmi_mcp_server.get_trading_manager()
+                    trading_manager = self._get_trading_manager()
                     result = await self.get_account_data(trading_manager)
                     return self.serialize_result(result)
                 except Exception as e:
@@ -168,10 +192,7 @@ class VersionLoader:
             @app.get("/resources/portfolio_summary")
             async def portfolio_summary():
                 try:
-                    sys.path.insert(0, str(Path.cwd() / "mcp-server"))
-                    import laxmi_mcp_server
-                    
-                    trading_manager = await laxmi_mcp_server.get_trading_manager()
+                    trading_manager = self._get_trading_manager()
                     
                     if hasattr(trading_manager, 'portfolio_manager'):
                         result = trading_manager.portfolio_manager.get_portfolio_summary()
@@ -183,6 +204,283 @@ class VersionLoader:
                     return self.serialize_result(result)
                 except Exception as e:
                     logger.error(f"Development portfolio summary error: {e}")
+                    return {"error": str(e), "version": "development"}
+            
+            # Add strategy summary endpoint
+            @app.get("/resources/strategy_summary")
+            async def strategy_summary(strategy_name: str):
+                try:
+                    trading_manager = self._get_trading_manager()
+                    if hasattr(trading_manager, 'portfolio_manager'):
+                        result = trading_manager.portfolio_manager.get_strategy_summary(strategy_name)
+                        if hasattr(result, '__await__'):
+                            result = await result
+                    else:
+                        result = {"error": "Strategy summary not available"}
+                    return self.serialize_result(result)
+                except Exception as e:
+                    logger.error(f"Development strategy summary error: {e}")
+                    return {"error": str(e), "version": "development"}
+
+            # Analytics: performance portfolio summary with PnL
+            @app.get("/analytics/performance/portfolio_summary")
+            async def analytics_portfolio_summary(strategy_name: str | None = None):
+                try:
+                    db = self._get_db_manager()
+                    # Enrich positions with latest price if available; fallback to avg_entry_price
+                    query = (
+                        "SELECT pp.strategy_name, pp.ticker, pp.quantity, pp.avg_entry_price, "
+                        "COALESCE(od.close, pp.avg_entry_price) AS current_price, "
+                        "CASE WHEN COALESCE(od.close, pp.avg_entry_price) > 0 AND pp.avg_entry_price > 0 "
+                        "THEN ROUND(((COALESCE(od.close, pp.avg_entry_price) - pp.avg_entry_price) / pp.avg_entry_price * 100)::numeric, 4) "
+                        "ELSE 0 END AS unrealized_pnl_percent, "
+                        "ROUND((pp.quantity * (COALESCE(od.close, pp.avg_entry_price) - pp.avg_entry_price))::numeric, 8) AS unrealized_pnl_amount, "
+                        "ROUND((pp.quantity * COALESCE(od.close, pp.avg_entry_price))::numeric, 8) AS market_value, "
+                        "pp.last_updated, pp.created_at, od.price_ts "
+                        "FROM portfolio_positions pp "
+                        "LEFT JOIN LATERAL ("
+                        "    SELECT close, timestamp AS price_ts FROM ohlc_data "
+                        "    WHERE ticker = pp.ticker "
+                        "       OR ticker = REPLACE(pp.ticker, '/', '') "
+                        "       OR REPLACE(ticker, '/', '') = pp.ticker "
+                        "    ORDER BY timestamp DESC LIMIT 1"
+                        ") od ON true "
+                        "WHERE pp.quantity != 0 "
+                    )
+                    params = {}
+                    if strategy_name:
+                        query += "AND pp.strategy_name = %(strategy_name)s "
+                        params['strategy_name'] = strategy_name
+                    query += "ORDER BY pp.strategy_name, pp.ticker"
+                    rows = db.execute_query(query, params) or []
+
+                    by_strategy: Dict[str, Dict[str, Any]] = {}
+                    total_mv = 0.0
+                    total_upnl = 0.0
+                    avg_upnl_pct_acc = 0.0
+                    total_annual_weighted = 0.0
+                    last_price_ts = None
+                    from datetime import datetime
+                    for r in rows:
+                        sn = r.get('strategy_name')
+                        by = by_strategy.setdefault(sn, {
+                            'strategy_name': sn,
+                            'positions_count': 0,
+                            'total_market_value': 0.0,
+                            'total_unrealized_pnl': 0.0,
+                            'annual_weighted_sum': 0.0
+                        })
+                        by['positions_count'] += 1
+                        mv = float(r.get('market_value') or 0)
+                        upnl = float(r.get('unrealized_pnl_amount') or 0)
+                        upnl_pct = float(r.get('unrealized_pnl_percent') or 0)
+                        avg_upnl_pct_acc += upnl_pct
+                        by['total_market_value'] += mv
+                        by['total_unrealized_pnl'] += upnl
+                        total_mv += mv
+                        total_upnl += upnl
+                        ts = r.get('price_ts')
+                        if ts and (last_price_ts is None or ts > last_price_ts):
+                            last_price_ts = ts
+                        # Annualize simple PnL% based on holding period
+                        try:
+                            ct = r.get('created_at')
+                            # If values are strings, attempt parse
+                            if isinstance(ts, str):
+                                ts_dt = datetime.fromisoformat(ts)
+                            else:
+                                ts_dt = ts or datetime.now()
+                            if isinstance(ct, str):
+                                ct_dt = datetime.fromisoformat(ct)
+                            else:
+                                ct_dt = ct or ts_dt
+                            days = max((ts_dt - ct_dt).total_seconds() / 86400.0, 1.0)
+                        except Exception:
+                            days = 365.0
+                        annualized_pct_pos = upnl_pct * (365.0 / days)
+                        by['annual_weighted_sum'] += annualized_pct_pos * mv
+                        total_annual_weighted += annualized_pct_pos * mv
+                    for s in by_strategy.values():
+                        mv = s['total_market_value']
+                        pct = (s['total_unrealized_pnl'] / mv * 100) if mv else 0.0
+                        s['net_unrealized_pnl_pct'] = pct
+                        s['net_unrealized_anual_pnl_pct'] = (s['annual_weighted_sum'] / mv) if mv else 0.0
+
+                    result = {
+                        'positions': rows,
+                        'by_strategy': list(by_strategy.values()),
+                        'totals': {
+                            'total_positions': len(rows),
+                            'total_market_value': total_mv,
+                            'net_unrealized_pnl': total_upnl,
+                            'net_unrealized_pnl_pct': (total_upnl / total_mv * 100) if total_mv else 0.0,
+                            'net_unrealized_anual_pnl_pct': (total_annual_weighted / total_mv) if total_mv else 0.0,
+                            'strategies_count': len(by_strategy),
+                            'avg_unrealized_pnl_pct': (avg_upnl_pct_acc / len(rows)) if rows else 0.0,
+                            'position_concentration_top_pct': (max([float(r.get('market_value') or 0) for r in rows]) / total_mv * 100) if rows and total_mv else 0.0,
+                            'last_price_timestamp': last_price_ts
+                        }
+                    }
+                    return self.serialize_result(result)
+                except Exception as e:
+                    logger.error(f"Development analytics portfolio summary error: {e}")
+                    return {"error": str(e), "version": "development"}
+
+            # Analytics: strategy summary (same fields, filtered by strategy)
+            @app.get("/analytics/performance/strategy_summary")
+            async def analytics_strategy_summary(strategy_name: str):
+                try:
+                    db = self._get_db_manager()
+                    query = (
+                        "SELECT pp.strategy_name, pp.ticker, pp.quantity, pp.avg_entry_price, "
+                        "COALESCE(od.close, pp.avg_entry_price) AS current_price, "
+                        "CASE WHEN COALESCE(od.close, pp.avg_entry_price) > 0 AND pp.avg_entry_price > 0 "
+                        "THEN ROUND(((COALESCE(od.close, pp.avg_entry_price) - pp.avg_entry_price) / pp.avg_entry_price * 100)::numeric, 4) "
+                        "ELSE 0 END AS unrealized_pnl_percent, "
+                        "ROUND((pp.quantity * (COALESCE(od.close, pp.avg_entry_price) - pp.avg_entry_price))::numeric, 8) AS unrealized_pnl_amount, "
+                        "ROUND((pp.quantity * COALESCE(od.close, pp.avg_entry_price))::numeric, 8) AS market_value, "
+                        "pp.last_updated, pp.created_at, od.price_ts "
+                        "FROM portfolio_positions pp "
+                        "LEFT JOIN LATERAL ("
+                        "    SELECT close, timestamp AS price_ts FROM ohlc_data "
+                        "    WHERE ticker = pp.ticker "
+                        "       OR ticker = REPLACE(pp.ticker, '/', '') "
+                        "       OR REPLACE(ticker, '/', '') = pp.ticker "
+                        "    ORDER BY timestamp DESC LIMIT 1"
+                        ") od ON true "
+                        "WHERE pp.quantity != 0 AND pp.strategy_name = %(s)s "
+                        "ORDER BY pp.ticker"
+                    )
+                    rows = db.execute_query(query, {'s': strategy_name}) or []
+
+                    by_strategy: Dict[str, Dict[str, Any]] = {}
+                    total_mv = 0.0
+                    total_upnl = 0.0
+                    avg_upnl_pct_acc = 0.0
+                    total_annual_weighted = 0.0
+                    last_price_ts = None
+                    from datetime import datetime
+                    for r in rows:
+                        sn = r.get('strategy_name')
+                        by = by_strategy.setdefault(sn, {
+                            'strategy_name': sn,
+                            'positions_count': 0,
+                            'total_market_value': 0.0,
+                            'total_unrealized_pnl': 0.0,
+                            'annual_weighted_sum': 0.0
+                        })
+                        by['positions_count'] += 1
+                        mv = float(r.get('market_value') or 0)
+                        upnl = float(r.get('unrealized_pnl_amount') or 0)
+                        upnl_pct = float(r.get('unrealized_pnl_percent') or 0)
+                        avg_upnl_pct_acc += upnl_pct
+                        by['total_market_value'] += mv
+                        by['total_unrealized_pnl'] += upnl
+                        total_mv += mv
+                        total_upnl += upnl
+                        ts = r.get('price_ts')
+                        if ts and (last_price_ts is None or ts > last_price_ts):
+                            last_price_ts = ts
+                        try:
+                            ct = r.get('created_at')
+                            if isinstance(ts, str):
+                                ts_dt = datetime.fromisoformat(ts)
+                            else:
+                                ts_dt = ts or datetime.now()
+                            if isinstance(ct, str):
+                                ct_dt = datetime.fromisoformat(ct)
+                            else:
+                                ct_dt = ct or ts_dt
+                            days = max((ts_dt - ct_dt).total_seconds() / 86400.0, 1.0)
+                        except Exception:
+                            days = 365.0
+                        annualized_pct_pos = upnl_pct * (365.0 / days)
+                        by['annual_weighted_sum'] += annualized_pct_pos * mv
+                        total_annual_weighted += annualized_pct_pos * mv
+
+                    for s in by_strategy.values():
+                        mv = s['total_market_value']
+                        pct = (s['total_unrealized_pnl'] / mv * 100) if mv else 0.0
+                        s['net_unrealized_pnl_pct'] = pct
+                        s['net_unrealized_anual_pnl_pct'] = (s['annual_weighted_sum'] / mv) if mv else 0.0
+
+                    result = {
+                        'positions': rows,
+                        'by_strategy': list(by_strategy.values()),
+                        'totals': {
+                            'total_positions': len(rows),
+                            'total_market_value': total_mv,
+                            'net_unrealized_pnl': total_upnl,
+                            'net_unrealized_pnl_pct': (total_upnl / total_mv * 100) if total_mv else 0.0,
+                            'net_unrealized_anual_pnl_pct': (total_annual_weighted / total_mv) if total_mv else 0.0,
+                            'strategies_count': len(by_strategy),
+                            'avg_unrealized_pnl_pct': (avg_upnl_pct_acc / len(rows)) if rows else 0.0,
+                            'position_concentration_top_pct': (max([float(r.get('market_value') or 0) for r in rows]) / total_mv * 100) if rows and total_mv else 0.0,
+                            'last_price_timestamp': last_price_ts
+                        }
+                    }
+                    return self.serialize_result(result)
+                except Exception as e:
+                    logger.error(f"Development analytics strategy summary error: {e}")
+                    return {"error": str(e), "version": "development"}
+
+            # Analytics: KPIs for quick monitoring (simple approximations)
+            @app.get("/analytics/performance/kpis")
+            async def analytics_kpis(strategy_name: str | None = None):
+                try:
+                    # Reuse portfolio summary analytics to compute KPIs
+                    resp = await analytics_portfolio_summary(strategy_name)
+                    # resp is already JSON-safe; compute additional KPIs
+                    def safe(val, default=0.0):
+                        try:
+                            return float(val)
+                        except Exception:
+                            return default
+                    totals = resp.get('totals', {}) if isinstance(resp, dict) else {}
+                    mv = safe(totals.get('total_market_value'))
+                    net_upnl = safe(totals.get('net_unrealized_pnl'))
+                    net_upnl_pct = safe(totals.get('net_unrealized_pnl_pct'))
+                    avg_upnl_pct = safe(totals.get('avg_unrealized_pnl_pct')) if totals else 0.0
+                    # Simple Sharpe proxy: annualized return divided by proxy of volatility
+                    # Here, volatility proxy uses MAD of position PnL% (very rough, avoids heavy time-series)
+                    positions = resp.get('positions', []) if isinstance(resp, dict) else []
+                    pnl_pcts = [safe(p.get('unrealized_pnl_percent')) for p in positions if p]
+                    if pnl_pcts:
+                        mean = sum(pnl_pcts) / len(pnl_pcts)
+                        mad = sum(abs(x - mean) for x in pnl_pcts) / len(pnl_pcts)
+                    else:
+                        mad = 0.0
+                    annual_ret_pct = safe(totals.get('net_unrealized_anual_pnl_pct'))
+                    sharpe_proxy = (annual_ret_pct / (mad if mad > 0 else 1.0))
+                    result = {
+                        'kpis': {
+                            'portfolio_market_value': mv,
+                            'net_unrealized_pnl': net_upnl,
+                            'net_unrealized_pnl_pct': net_upnl_pct,
+                            'annualized_unrealized_pnl_pct': annual_ret_pct,
+                            'avg_position_unrealized_pnl_pct': avg_upnl_pct,
+                            'sharpe_ratio_proxy': sharpe_proxy,
+                        },
+                        'source': 'analytics_portfolio_summary'
+                    }
+                    return self.serialize_result(result)
+                except Exception as e:
+                    logger.error(f"Development analytics KPIs error: {e}")
+                    return {"error": str(e), "version": "development"}
+
+            # Analytics: Top movers by absolute PnL%
+            @app.get("/analytics/performance/top_movers")
+            async def analytics_top_movers(limit: int = 5, strategy_name: str | None = None):
+                try:
+                    summary = await analytics_portfolio_summary(strategy_name)
+                    positions = summary.get('positions', []) if isinstance(summary, dict) else []
+                    # Sort by absolute unrealized_pnl_percent desc
+                    positions.sort(key=lambda p: abs(float(p.get('unrealized_pnl_percent', 0) or 0)), reverse=True)
+                    return self.serialize_result({
+                        'top_movers': positions[:max(0, min(limit, 100))]
+                    })
+                except Exception as e:
+                    logger.error(f"Development analytics top movers error: {e}")
                     return {"error": str(e), "version": "development"}
                     
             return app
@@ -212,10 +510,7 @@ class VersionLoader:
         @app.get("/resources/account_info")
         async def account_info():
             try:
-                sys.path.insert(0, str(Path.cwd() / "mcp-server"))
-                import laxmi_mcp_server
-                
-                trading_manager = await laxmi_mcp_server.get_trading_manager()
+                trading_manager = self._get_trading_manager()
                 result = await self.get_account_data(trading_manager)
                 return self.serialize_result(result)
             except Exception as e:
@@ -230,10 +525,7 @@ class VersionLoader:
         @app.post("/tools/get_account_status")
         async def get_account_status():
             try:
-                sys.path.insert(0, str(Path.cwd() / "mcp-server"))
-                import laxmi_mcp_server
-                
-                trading_manager = await laxmi_mcp_server.get_trading_manager()
+                trading_manager = self._get_trading_manager()
                 result = await self.get_account_data(trading_manager)
                 return self.serialize_result(result)
             except Exception as e:
@@ -248,10 +540,7 @@ class VersionLoader:
         @app.get("/resources/portfolio_summary")
         async def portfolio_summary():
             try:
-                sys.path.insert(0, str(Path.cwd() / "mcp-server"))
-                import laxmi_mcp_server
-                
-                trading_manager = await laxmi_mcp_server.get_trading_manager()
+                trading_manager = self._get_trading_manager()
                 
                 if hasattr(trading_manager, 'portfolio_manager'):
                     result = trading_manager.portfolio_manager.get_portfolio_summary()
@@ -269,6 +558,296 @@ class VersionLoader:
                     "version": version
                 }
                 
+        # Add strategy summary endpoint
+        @app.get("/resources/strategy_summary")
+        async def strategy_summary(strategy_name: str):
+            try:
+                trading_manager = self._get_trading_manager()
+                if hasattr(trading_manager, 'portfolio_manager'):
+                    result = trading_manager.portfolio_manager.get_strategy_summary(strategy_name)
+                    if hasattr(result, '__await__'):
+                        result = await result
+                else:
+                    result = {"message": f"Strategy summary not available in {version}"}
+                return self.serialize_result(result)
+            except Exception as e:
+                logger.error(f"Version {version} strategy summary error: {e}")
+                return {
+                    "error": f"Strategy summary not available in {version}",
+                    "details": str(e),
+                    "version": version
+                }
+
+        # Analytics: performance portfolio summary with PnL
+        @app.get("/analytics/performance/portfolio_summary")
+        async def analytics_portfolio_summary(strategy_name: str | None = None):
+            try:
+                db = self._get_db_manager()
+                query = (
+                    "SELECT pp.strategy_name, pp.ticker, pp.quantity, pp.avg_entry_price, "
+                    "COALESCE(od.close, pp.avg_entry_price) AS current_price, "
+                    "CASE WHEN COALESCE(od.close, pp.avg_entry_price) > 0 AND pp.avg_entry_price > 0 "
+                    "THEN ROUND(((COALESCE(od.close, pp.avg_entry_price) - pp.avg_entry_price) / pp.avg_entry_price * 100)::numeric, 4) "
+                    "ELSE 0 END AS unrealized_pnl_percent, "
+                    "ROUND((pp.quantity * (COALESCE(od.close, pp.avg_entry_price) - pp.avg_entry_price))::numeric, 8) AS unrealized_pnl_amount, "
+                    "ROUND((pp.quantity * COALESCE(od.close, pp.avg_entry_price))::numeric, 8) AS market_value, "
+                    "pp.last_updated, pp.created_at, od.price_ts "
+                    "FROM portfolio_positions pp "
+                    "LEFT JOIN LATERAL ("
+                    "    SELECT close, timestamp AS price_ts FROM ohlc_data "
+                    "    WHERE ticker = pp.ticker "
+                    "       OR ticker = REPLACE(pp.ticker, '/', '') "
+                    "       OR REPLACE(ticker, '/', '') = pp.ticker "
+                    "    ORDER BY timestamp DESC LIMIT 1"
+                    ") od ON true "
+                    "WHERE pp.quantity != 0 "
+                )
+                params = {}
+                if strategy_name:
+                    query += "AND pp.strategy_name = %(strategy_name)s "
+                    params['strategy_name'] = strategy_name
+                query += "ORDER BY pp.strategy_name, pp.ticker"
+                rows = db.execute_query(query, params) or []
+
+                by_strategy: Dict[str, Dict[str, Any]] = {}
+                total_mv = 0.0
+                total_upnl = 0.0
+                avg_upnl_pct_acc = 0.0
+                total_annual_weighted = 0.0
+                last_price_ts = None
+                from datetime import datetime
+                for r in rows:
+                    sn = r.get('strategy_name')
+                    by = by_strategy.setdefault(sn, {
+                        'strategy_name': sn,
+                        'positions_count': 0,
+                        'total_market_value': 0.0,
+                        'total_unrealized_pnl': 0.0,
+                        'annual_weighted_sum': 0.0
+                    })
+                    by['positions_count'] += 1
+                    mv = float(r.get('market_value') or 0)
+                    upnl = float(r.get('unrealized_pnl_amount') or 0)
+                    upnl_pct = float(r.get('unrealized_pnl_percent') or 0)
+                    avg_upnl_pct_acc += upnl_pct
+                    by['total_market_value'] += mv
+                    by['total_unrealized_pnl'] += upnl
+                    total_mv += mv
+                    total_upnl += upnl
+                    ts = r.get('price_ts')
+                    if ts and (last_price_ts is None or ts > last_price_ts):
+                        last_price_ts = ts
+                    # Annualize simple PnL% based on holding period
+                    try:
+                        ct = r.get('created_at')
+                        if isinstance(ts, str):
+                            ts_dt = datetime.fromisoformat(ts)
+                        else:
+                            ts_dt = ts or datetime.now()
+                        if isinstance(ct, str):
+                            ct_dt = datetime.fromisoformat(ct)
+                        else:
+                            ct_dt = ct or ts_dt
+                        days = max((ts_dt - ct_dt).total_seconds() / 86400.0, 1.0)
+                    except Exception:
+                        days = 365.0
+                    annualized_pct_pos = upnl_pct * (365.0 / days)
+                    by['annual_weighted_sum'] += annualized_pct_pos * mv
+                    total_annual_weighted += annualized_pct_pos * mv
+                for s in by_strategy.values():
+                    mv = s['total_market_value']
+                    pct = (s['total_unrealized_pnl'] / mv * 100) if mv else 0.0
+                    s['net_unrealized_pnl_pct'] = pct
+                    s['net_unrealized_anual_pnl_pct'] = (s['annual_weighted_sum'] / mv) if mv else 0.0
+
+                result = {
+                    'positions': rows,
+                    'by_strategy': list(by_strategy.values()),
+                    'totals': {
+                        'total_positions': len(rows),
+                        'total_market_value': total_mv,
+                        'net_unrealized_pnl': total_upnl,
+                        'net_unrealized_pnl_pct': (total_upnl / total_mv * 100) if total_mv else 0.0,
+                        'net_unrealized_anual_pnl_pct': (total_annual_weighted / total_mv) if total_mv else 0.0,
+                        'strategies_count': len(by_strategy),
+                        'avg_unrealized_pnl_pct': (avg_upnl_pct_acc / len(rows)) if rows else 0.0,
+                        'position_concentration_top_pct': (max([float(r.get('market_value') or 0) for r in rows]) / total_mv * 100) if rows and total_mv else 0.0,
+                        'last_price_timestamp': last_price_ts
+                    }
+                }
+                return self.serialize_result(result)
+            except Exception as e:
+                logger.error(f"Version {version} analytics portfolio summary error: {e}")
+                return {
+                    "error": f"Analytics portfolio summary not available in {version}",
+                    "details": str(e),
+                    "version": version
+                }
+
+        # Analytics: strategy summary (same fields, filtered by strategy)
+        @app.get("/analytics/performance/strategy_summary")
+        async def analytics_strategy_summary(strategy_name: str):
+            try:
+                db = self._get_db_manager()
+                query = (
+                    "SELECT pp.strategy_name, pp.ticker, pp.quantity, pp.avg_entry_price, "
+                    "COALESCE(od.close, pp.avg_entry_price) AS current_price, "
+                    "CASE WHEN COALESCE(od.close, pp.avg_entry_price) > 0 AND pp.avg_entry_price > 0 "
+                    "THEN ROUND(((COALESCE(od.close, pp.avg_entry_price) - pp.avg_entry_price) / pp.avg_entry_price * 100)::numeric, 4) "
+                    "ELSE 0 END AS unrealized_pnl_percent, "
+                    "ROUND((pp.quantity * (COALESCE(od.close, pp.avg_entry_price) - pp.avg_entry_price))::numeric, 8) AS unrealized_pnl_amount, "
+                    "ROUND((pp.quantity * COALESCE(od.close, pp.avg_entry_price))::numeric, 8) AS market_value, "
+                    "pp.last_updated, pp.created_at, od.price_ts "
+                    "FROM portfolio_positions pp "
+                    "LEFT JOIN LATERAL ("
+                    "    SELECT close, timestamp AS price_ts FROM ohlc_data "
+                    "    WHERE ticker = pp.ticker "
+                    "       OR ticker = REPLACE(pp.ticker, '/', '') "
+                    "       OR REPLACE(ticker, '/', '') = pp.ticker "
+                    "    ORDER BY timestamp DESC LIMIT 1"
+                    ") od ON true "
+                    "WHERE pp.quantity != 0 AND pp.strategy_name = %(s)s "
+                    "ORDER BY pp.ticker"
+                )
+                rows = db.execute_query(query, {'s': strategy_name}) or []
+
+                by_strategy: Dict[str, Dict[str, Any]] = {}
+                total_mv = 0.0
+                total_upnl = 0.0
+                avg_upnl_pct_acc = 0.0
+                total_annual_weighted = 0.0
+                last_price_ts = None
+                from datetime import datetime
+                for r in rows:
+                    sn = r.get('strategy_name')
+                    by = by_strategy.setdefault(sn, {
+                        'strategy_name': sn,
+                        'positions_count': 0,
+                        'total_market_value': 0.0,
+                        'total_unrealized_pnl': 0.0,
+                        'annual_weighted_sum': 0.0
+                    })
+                    by['positions_count'] += 1
+                    mv = float(r.get('market_value') or 0)
+                    upnl = float(r.get('unrealized_pnl_amount') or 0)
+                    upnl_pct = float(r.get('unrealized_pnl_percent') or 0)
+                    avg_upnl_pct_acc += upnl_pct
+                    by['total_market_value'] += mv
+                    by['total_unrealized_pnl'] += upnl
+                    total_mv += mv
+                    total_upnl += upnl
+                    ts = r.get('price_ts')
+                    if ts and (last_price_ts is None or ts > last_price_ts):
+                        last_price_ts = ts
+                    try:
+                        ct = r.get('created_at')
+                        if isinstance(ts, str):
+                            ts_dt = datetime.fromisoformat(ts)
+                        else:
+                            ts_dt = ts or datetime.now()
+                        if isinstance(ct, str):
+                            ct_dt = datetime.fromisoformat(ct)
+                        else:
+                            ct_dt = ct or ts_dt
+                        days = max((ts_dt - ct_dt).total_seconds() / 86400.0, 1.0)
+                    except Exception:
+                        days = 365.0
+                    annualized_pct_pos = upnl_pct * (365.0 / days)
+                    by['annual_weighted_sum'] += annualized_pct_pos * mv
+                    total_annual_weighted += annualized_pct_pos * mv
+                for s in by_strategy.values():
+                    mv = s['total_market_value']
+                    pct = (s['total_unrealized_pnl'] / mv * 100) if mv else 0.0
+                    s['net_unrealized_pnl_pct'] = pct
+                    s['net_unrealized_anual_pnl_pct'] = (s['annual_weighted_sum'] / mv) if mv else 0.0
+
+                result = {
+                    'positions': rows,
+                    'by_strategy': list(by_strategy.values()),
+                    'totals': {
+                        'total_positions': len(rows),
+                        'total_market_value': total_mv,
+                        'net_unrealized_pnl': total_upnl,
+                        'net_unrealized_pnl_pct': (total_upnl / total_mv * 100) if total_mv else 0.0,
+                        'net_unrealized_anual_pnl_pct': (total_annual_weighted / total_mv) if total_mv else 0.0,
+                        'strategies_count': len(by_strategy),
+                        'avg_unrealized_pnl_pct': (avg_upnl_pct_acc / len(rows)) if rows else 0.0,
+                        'position_concentration_top_pct': (max([float(r.get('market_value') or 0) for r in rows]) / total_mv * 100) if rows and total_mv else 0.0,
+                        'last_price_timestamp': last_price_ts
+                    }
+                }
+                return self.serialize_result(result)
+            except Exception as e:
+                logger.error(f"Version {version} analytics strategy summary error: {e}")
+                return {
+                    "error": f"Analytics strategy summary not available in {version}",
+                    "details": str(e),
+                    "version": version
+                }
+
+        # Analytics: KPIs for quick monitoring (simple approximations)
+        @app.get("/analytics/performance/kpis")
+        async def analytics_kpis(strategy_name: str | None = None):
+            try:
+                resp = await analytics_portfolio_summary(strategy_name)
+                def safe(val, default=0.0):
+                    try:
+                        return float(val)
+                    except Exception:
+                        return default
+                totals = resp.get('totals', {}) if isinstance(resp, dict) else {}
+                mv = safe(totals.get('total_market_value'))
+                net_upnl = safe(totals.get('net_unrealized_pnl'))
+                net_upnl_pct = safe(totals.get('net_unrealized_pnl_pct'))
+                avg_upnl_pct = safe(totals.get('avg_unrealized_pnl_pct')) if totals else 0.0
+                positions = resp.get('positions', []) if isinstance(resp, dict) else []
+                pnl_pcts = [safe(p.get('unrealized_pnl_percent')) for p in positions if p]
+                if pnl_pcts:
+                    mean = sum(pnl_pcts) / len(pnl_pcts)
+                    mad = sum(abs(x - mean) for x in pnl_pcts) / len(pnl_pcts)
+                else:
+                    mad = 0.0
+                annual_ret_pct = safe(totals.get('net_unrealized_anual_pnl_pct'))
+                sharpe_proxy = (annual_ret_pct / (mad if mad > 0 else 1.0))
+                result = {
+                    'kpis': {
+                        'portfolio_market_value': mv,
+                        'net_unrealized_pnl': net_upnl,
+                        'net_unrealized_pnl_pct': net_upnl_pct,
+                        'annualized_unrealized_pnl_pct': annual_ret_pct,
+                        'avg_position_unrealized_pnl_pct': avg_upnl_pct,
+                        'sharpe_ratio_proxy': sharpe_proxy,
+                    },
+                    'source': 'analytics_portfolio_summary'
+                }
+                return self.serialize_result(result)
+            except Exception as e:
+                logger.error(f"Version {version} analytics KPIs error: {e}")
+                return {
+                    "error": f"Analytics KPIs not available in {version}",
+                    "details": str(e),
+                    "version": version
+                }
+
+        # Analytics: Top movers by absolute PnL%
+        @app.get("/analytics/performance/top_movers")
+        async def analytics_top_movers(limit: int = 5, strategy_name: str | None = None):
+            try:
+                summary = await analytics_portfolio_summary(strategy_name)
+                positions = summary.get('positions', []) if isinstance(summary, dict) else []
+                positions.sort(key=lambda p: abs(float(p.get('unrealized_pnl_percent', 0) or 0)), reverse=True)
+                return self.serialize_result({
+                    'top_movers': positions[:max(0, min(limit, 100))]
+                })
+            except Exception as e:
+                logger.error(f"Version {version} analytics top movers error: {e}")
+                return {
+                    "error": f"Analytics top movers not available in {version}",
+                    "details": str(e),
+                    "version": version
+                }
+        
+        
         return app
         
     def serialize_result(self, result: Any) -> Any:

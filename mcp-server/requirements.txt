@@ -1,6 +1,0 @@
-fastmcp==2.11.0
-uvicorn==0.24.0
-python-dotenv>=1.0.0
-fastapi>=0.111.0
-
-# Note: Project itself is installed by the launcher script if needed

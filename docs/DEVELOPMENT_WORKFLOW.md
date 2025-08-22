@@ -16,7 +16,6 @@ source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
-pip install -r mcp-server/requirements.txt
 ```
 
 ### 2. Configuration

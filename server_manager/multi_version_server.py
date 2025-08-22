@@ -197,6 +197,31 @@ class MultiVersionServer:
         
         if 'development' in loaded_versions:
             logger.info("🔧 Development mode is active")
+        
+        # Start lightweight background price poller for analytics current_price (optional)
+        try:
+            import asyncio
+            import os
+            interval_s = float(os.getenv('PRICE_POLL_INTERVAL_SECONDS', '60'))
+            logger.info(f"Starting price poller (interval={interval_s}s)")
+            # Do an immediate poll once at startup so analytics has fresh data
+            try:
+                await self._poll_and_update_latest_prices()
+                logger.info("Initial price poll complete")
+            except Exception as ie:
+                logger.warning(f"Initial price poll failed: {ie}")
+            
+            async def price_poller():
+                while True:
+                    try:
+                        await self._poll_and_update_latest_prices()
+                    except Exception as e:
+                        logger.warning(f"Price poller error: {e}")
+                    await asyncio.sleep(interval_s)
+            
+            asyncio.create_task(price_poller())
+        except Exception as e:
+            logger.warning(f"Failed to start price poller: {e}")
             
     async def shutdown(self) -> None:
         """Server shutdown tasks."""
@@ -220,3 +245,168 @@ class MultiVersionServer:
             await self.shutdown()
             
         return self.app
+
+    async def _poll_and_update_latest_prices(self) -> None:
+        """Fetch latest prices for tickers in portfolio_positions and upsert into ohlc_data."""
+        try:
+            # Lazy imports to avoid heavy deps if unused
+            import sys
+            from pathlib import Path
+            src_path = str(Path.cwd() / "src")
+            if src_path not in sys.path:
+                sys.path.insert(0, src_path)
+            from braintransactions.core.config import BrainConfig
+            from braintransactions.database.connection import DatabaseManager
+            config = BrainConfig()
+            db = DatabaseManager(config)
+            # Ensure core tables (including ohlc_data) exist before polling
+            try:
+                db.create_tables()
+            except Exception as e:
+                logger.warning(f"Create tables failed (will continue): {e}")
+            
+            # Get unique tickers from positions
+            rows = db.execute_query(
+                f"SELECT DISTINCT ticker FROM {config.db_schema}.portfolio_positions WHERE quantity != 0"
+            )
+            tickers = [r['ticker'] for r in rows] if rows else []
+            if not tickers:
+                return
+            logger.debug(f"Price poller: found {len(tickers)} tickers: {tickers}")
+            
+            # Basic price source using Alpaca if available
+            latest_prices = {}
+            try:
+                import alpaca_trade_api as tradeapi
+                api = tradeapi.REST(config.alpaca_api_key, config.alpaca_secret_key, config.alpaca_base_url, api_version='v2')
+                for t in tickers:
+                    price = 0.0
+                    try:
+                        # Build symbol candidates to handle crypto/equity notation
+                        candidates = [t]
+                        if '/' in t:
+                            candidates.append(t.replace('/', ''))  # BTC/USD -> BTCUSD
+                        elif t.endswith('USD'):
+                            candidates.append(f"{t[:-3]}/USD")   # BTCUSD -> BTC/USD
+                        logger.debug(f"Polling prices for {t} candidates={candidates}")
+
+                        # Try minute bars first (equities)
+                        for sym in candidates:
+                            try:
+                                barset = api.get_bars(sym, tradeapi.rest.TimeFrame.Minute, limit=1)
+                                if hasattr(barset, 'df') and not barset.df.empty:
+                                    price = float(barset.df.iloc[-1]['close'])
+                                    logger.debug(f"Bars hit for {sym}: close={price}")
+                                    if price > 0:
+                                        break
+                            except Exception:
+                                logger.debug(f"Bars fetch failed for {sym}")
+                                continue
+                        # If still no price and looks like crypto, try crypto-specific endpoints
+                        if price <= 0 and ("/" in t or t.endswith('USD')):
+                            for sym in candidates:
+                                # Try crypto bars (API supports get_crypto_bars in some versions)
+                                try:
+                                    crypto_bars = None
+                                    try:
+                                        crypto_bars = api.get_crypto_bars(sym, tradeapi.rest.TimeFrame.Minute, limit=1)
+                                    except Exception:
+                                        # Some versions use string timeframe
+                                        crypto_bars = api.get_crypto_bars(sym, '1Min', limit=1)
+                                    if crypto_bars is not None:
+                                        df = getattr(crypto_bars, 'df', None)
+                                        if df is not None and not df.empty:
+                                            price = float(df.iloc[-1]['close'])
+                                            logger.debug(f"Crypto bars hit for {sym}: close={price}")
+                                            if price > 0:
+                                                break
+                                except Exception:
+                                    logger.debug(f"Crypto bars fetch failed for {sym}")
+                                    continue
+                        # Fallback: last trade
+                        if price <= 0:
+                            for sym in candidates:
+                                try:
+                                    last_trade = api.get_last_trade(sym)
+                                    price = float(getattr(last_trade, 'price', None) or 0)
+                                    logger.debug(f"Last trade for {sym}: price={price}")
+                                    if price > 0:
+                                        break
+                                except Exception:
+                                    logger.debug(f"Last trade fetch failed for {sym}")
+                                    continue
+                        # Crypto last trade fallback (if available)
+                        if price <= 0 and ("/" in t or t.endswith('USD')):
+                            for sym in candidates:
+                                try:
+                                    crypto_last = None
+                                    try:
+                                        crypto_last = api.get_crypto_last_trade(sym)
+                                    except Exception:
+                                        pass
+                                    if crypto_last is not None:
+                                        price = float(getattr(crypto_last, 'price', None) or 0)
+                                        logger.debug(f"Crypto last trade for {sym}: price={price}")
+                                        if price > 0:
+                                            break
+                                except Exception:
+                                    logger.debug(f"Crypto last trade fetch failed for {sym}")
+                                    continue
+                    except Exception:
+                        price = 0.0
+                        logger.debug(f"General error while fetching price for {t}")
+                    logger.debug(f"Chosen price for {t}: {price}")
+                    latest_prices[t] = price
+            except Exception:
+                # If Alpaca unavailable, skip silently
+                logger.warning("Alpaca client not available; skipping price poll")
+                return
+            
+            # Insert into ohlc_data with explicit timeframe and OHLC (Timescale hypertable compatibility)
+            for t, p in latest_prices.items():
+                if p is None or p <= 0:
+                    logger.debug(f"Skipping insert for {t}: invalid price {p}")
+                    continue
+                try:
+                    # Try to get full OHLCV for 1m bar
+                    o = h = l = v = None
+                    try:
+                        import alpaca_trade_api as tradeapi
+                        barset = api.get_bars(t, tradeapi.rest.TimeFrame.Minute, limit=1)
+                        if hasattr(barset, 'df') and not barset.df.empty:
+                            last = barset.df.iloc[-1]
+                            o = float(last.get('open', p)) if last.get('open', None) is not None else p
+                            h = float(last.get('high', p)) if last.get('high', None) is not None else p
+                            l = float(last.get('low', p)) if last.get('low', None) is not None else p
+                            v = float(last.get('volume', 0) or 0)
+                    except Exception:
+                        pass
+                    params = {
+                        't': t,
+                        'tf': '1m',
+                        'o': o if o is not None else p,
+                        'h': h if h is not None else p,
+                        'l': l if l is not None else p,
+                        'c': p,
+                        'v': v if v is not None else 0
+                    }
+                    # Insert for ticker variants to improve join hits
+                    variants = {t}
+                    if '/' in t:
+                        variants.add(t.replace('/', ''))
+                    elif t.endswith('USD'):
+                        variants.add(f"{t[:-3]}/USD")
+                    for tv in variants:
+                        v_params = dict(params)
+                        v_params['t'] = tv
+                        logger.debug(f"Inserting OHLC for {tv}: {v_params}")
+                        db.execute_action(
+                            f"INSERT INTO {config.db_schema}.ohlc_data (timestamp, ticker, timeframe, open, high, low, close, volume) "
+                            f"VALUES (NOW(), %(t)s, %(tf)s, %(o)s, %(h)s, %(l)s, %(c)s, %(v)s)",
+                            v_params
+                        )
+                except Exception as ie:
+                    logger.debug(f"Insert failed for {t}: {ie}")
+                    continue
+        except Exception as e:
+            logger.warning(f"Price poller outer error: {e}")
