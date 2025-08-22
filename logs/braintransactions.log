@@ -5097,3 +5097,240 @@ TypeError: http_strategy_summary() missing 1 required positional argument: 'stra
 2025-08-22 00:44:39,786 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - Position updated: default AI 1.0
 2025-08-22 00:44:39,798 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - Position updated: default BTCUSD 0.00349125
 2025-08-22 00:44:39,808 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - Position updated: default TSLA 15.0
+2025-08-22 00:52:59,337 - braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 00:52:59,337 - braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 00:52:59,337 - braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 00:52:59,716 - braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 00:52:59,716 - braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 00:52:59,716 - braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 00:52:59,716 - braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 00:52:59,790 - braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 00:53:00,260 - src.braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 00:53:00,260 - src.braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 00:53:00,260 - src.braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 00:53:00,545 - __main__ - INFO - Starting background poller: interval=300.0s strategy=default
+2025-08-22 00:53:00,545 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - 🙏 Initializing Laxmi-yantra Trading Manager - May Goddess Laxmi bless this system
+2025-08-22 00:53:00,545 - src.braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 00:53:00,545 - src.braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 00:53:00,545 - src.braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 00:53:00,545 - src.braintransactions.core.base_transaction - INFO - 🙏 Initializing Laxmi-yantra transaction manager
+2025-08-22 00:53:00,937 - src.braintransactions.core.config - INFO - ✅ Alpaca credentials validated - Account status: ACTIVE
+2025-08-22 00:53:00,939 - src.braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 00:53:00,971 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - 🙏 Laxmi-yantra Portfolio Manager initialized
+2025-08-22 00:53:01,013 - src.braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 00:53:01,014 - src.braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 00:53:01,022 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - 🙏 Laxmi-yantra Order Manager initialized
+2025-08-22 00:53:01,056 - src.braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 00:53:01,452 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - 🔧 Laxmi-yantra components initialized successfully
+2025-08-22 00:53:01,452 - src.braintransactions.core.base_transaction - INFO - ✅ Laxmi-yantra transaction manager initialized successfully
+2025-08-22 00:53:01,453 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - ✅ Laxmi-yantra initialized successfully in paper trading mode
+2025-08-22 00:53:01,453 - __main__ - INFO - 🙏 Laxmi-yantra trading manager initialized
+2025-08-22 00:53:01,606 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 85e571b6-a794-47c9-a5a6-d15eb2e86a87 status=filled
+2025-08-22 00:53:01,623 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 3acc85f4-4886-43ca-a698-9775b7bc1728 status=filled
+2025-08-22 00:53:01,633 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 88152a1f-e203-4495-adc2-abcd2532aad2 status=accepted
+2025-08-22 00:53:01,644 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 92b556b7-b3a1-43ec-9eb6-6bc7bbd0b789 status=accepted
+2025-08-22 00:53:01,655 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 550af6b0-16e7-44e1-a450-66bfe85be034 status=filled
+2025-08-22 00:53:01,664 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: e366d71c-6283-49dd-8c4b-c13a6233b3cd status=filled
+2025-08-22 00:53:01,674 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 99a3594a-42a5-4728-85b6-76b3d2f207ca status=filled
+2025-08-22 00:53:01,693 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: e9be4b64-0cb6-4a30-b18f-ade237799431 status=filled
+2025-08-22 00:53:01,725 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 4a3eee3f-df5a-49b2-a409-4f050433c95a status=filled
+2025-08-22 00:53:01,754 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 365d54cf-fc45-4a1f-8561-4cc514793577 status=filled
+2025-08-22 00:53:01,779 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: fdcfee8c-ffce-437c-8e5b-21a7171415a5 status=filled
+2025-08-22 00:53:01,798 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 5bd27445-6f20-4fba-996d-e97ebc9b9644 status=filled
+2025-08-22 00:53:01,822 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 8ab487e3-15ee-4df0-96f3-3cc764315e79 status=filled
+2025-08-22 00:53:01,841 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: d3208fb5-ba48-4d24-9180-230e939faee4 status=filled
+2025-08-22 00:53:01,868 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: b727ef93-b7d4-4701-ac88-3d43db3e2449 status=filled
+2025-08-22 00:53:01,879 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: d22d8e20-dc01-4ff1-aa86-29126cf40d97 status=filled
+2025-08-22 00:53:01,890 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: bd8f05fe-0a3d-4eff-a1d8-0ea22dcdc89c status=filled
+2025-08-22 00:53:01,899 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 7a6af6dc-3ff2-43a0-8005-db5a9acdbf4c status=filled
+2025-08-22 00:53:01,908 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 14f9b4d0-529c-41cb-9ded-814f4c2928ca status=filled
+2025-08-22 00:53:01,917 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: ffc1b658-78f9-4769-8ce5-c88bca8844ce status=filled
+2025-08-22 00:53:01,927 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 20864e99-6939-4346-9da5-0051a38e39a0 status=filled
+2025-08-22 00:53:01,936 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: fb700706-9240-41a9-b12e-0b50d630b856 status=filled
+2025-08-22 00:53:01,946 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 27efd212-0447-47bf-8850-6896057284d6 status=filled
+2025-08-22 00:53:01,955 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 93403a0f-c05a-4b01-9279-0e65ff297ef7 status=filled
+2025-08-22 00:53:01,964 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: c61cfacd-285b-46f3-ac05-adca3adb6e91 status=filled
+2025-08-22 00:53:01,973 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 457d42ff-6fd7-4c10-a29f-14858e33d90f status=filled
+2025-08-22 00:53:01,983 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 331df60c-1954-411a-9a75-75765d4aa872 status=filled
+2025-08-22 00:53:01,993 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 39aa9832-f1ab-485d-8221-29522985794a status=filled
+2025-08-22 00:53:02,002 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 6515672b-3fbd-4a11-b811-d26d26a73943 status=filled
+2025-08-22 00:53:02,011 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 946ef071-b07e-420e-8660-6e37a616d200 status=filled
+2025-08-22 00:53:02,020 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 1a3cd91a-a8f8-429b-a4dd-0d0c556bd4cd status=filled
+2025-08-22 00:53:02,030 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 3b0fde00-e705-4a0d-b6fa-28cafe4535d5 status=filled
+2025-08-22 00:53:02,039 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: c66aea83-500d-45a3-ae11-71ac123dc3b9 status=filled
+2025-08-22 00:53:02,049 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 3845d3d8-dd46-4bb4-841f-799656f36521 status=filled
+2025-08-22 00:53:02,059 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 85f0ed49-68b7-448c-ae1e-de7670f75f37 status=filled
+2025-08-22 00:53:02,069 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: fb2f8dc1-0122-49ea-9067-9570506afa91 status=filled
+2025-08-22 00:53:02,078 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: d409028d-f5bc-4524-b02f-f007cc21d39a status=filled
+2025-08-22 00:53:02,088 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: ce94ab1d-4adf-4a6e-8f9f-efa240a368d7 status=filled
+2025-08-22 00:53:02,097 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: af7d1e1d-18f4-46f8-bd3e-55fcdbf5efbd status=filled
+2025-08-22 00:53:02,106 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: db139f98-a2c7-46f8-a2c6-b27d69c71661 status=filled
+2025-08-22 00:53:02,116 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: efa2b1f3-6295-470b-8155-55fd93286e53 status=filled
+2025-08-22 00:53:02,234 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - Position updated: default AAPL 30.0
+2025-08-22 00:53:02,244 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - Position updated: default AI 1.0
+2025-08-22 00:53:02,255 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - Position updated: default BTCUSD 0.00349125
+2025-08-22 00:53:02,264 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - Position updated: default TSLA 15.0
+2025-08-22 10:27:44,930 - braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 10:27:44,930 - braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 10:27:44,930 - braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 10:27:45,760 - braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 10:27:45,760 - braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 10:27:45,760 - braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 10:27:45,760 - braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 10:27:45,839 - braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 10:27:46,398 - src.braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 10:27:46,398 - src.braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 10:27:46,398 - src.braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 10:27:46,698 - __main__ - INFO - Starting background poller: interval=300.0s strategy=default
+2025-08-22 10:27:46,698 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - 🙏 Initializing Laxmi-yantra Trading Manager - May Goddess Laxmi bless this system
+2025-08-22 10:27:46,698 - src.braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 10:27:46,698 - src.braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 10:27:46,698 - src.braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 10:27:46,698 - src.braintransactions.core.base_transaction - INFO - 🙏 Initializing Laxmi-yantra transaction manager
+2025-08-22 10:27:47,122 - src.braintransactions.core.config - INFO - ✅ Alpaca credentials validated - Account status: ACTIVE
+2025-08-22 10:27:47,124 - src.braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 10:27:47,170 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - 🙏 Laxmi-yantra Portfolio Manager initialized
+2025-08-22 10:27:47,207 - src.braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 10:27:47,207 - src.braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 10:27:47,219 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - 🙏 Laxmi-yantra Order Manager initialized
+2025-08-22 10:27:47,254 - src.braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 10:27:47,643 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - 🔧 Laxmi-yantra components initialized successfully
+2025-08-22 10:27:47,643 - src.braintransactions.core.base_transaction - INFO - ✅ Laxmi-yantra transaction manager initialized successfully
+2025-08-22 10:27:47,643 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - ✅ Laxmi-yantra initialized successfully in paper trading mode
+2025-08-22 10:27:47,643 - __main__ - INFO - 🙏 Laxmi-yantra trading manager initialized
+2025-08-22 10:27:47,788 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 88152a1f-e203-4495-adc2-abcd2532aad2 status=new
+2025-08-22 10:27:47,800 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 92b556b7-b3a1-43ec-9eb6-6bc7bbd0b789 status=new
+2025-08-22 10:27:47,811 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 85e571b6-a794-47c9-a5a6-d15eb2e86a87 status=filled
+2025-08-22 10:27:47,823 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 3acc85f4-4886-43ca-a698-9775b7bc1728 status=filled
+2025-08-22 10:27:47,833 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 550af6b0-16e7-44e1-a450-66bfe85be034 status=filled
+2025-08-22 10:27:47,842 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: e366d71c-6283-49dd-8c4b-c13a6233b3cd status=filled
+2025-08-22 10:27:47,853 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 99a3594a-42a5-4728-85b6-76b3d2f207ca status=filled
+2025-08-22 10:27:47,863 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: e9be4b64-0cb6-4a30-b18f-ade237799431 status=filled
+2025-08-22 10:27:47,873 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 4a3eee3f-df5a-49b2-a409-4f050433c95a status=filled
+2025-08-22 10:27:47,883 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 365d54cf-fc45-4a1f-8561-4cc514793577 status=filled
+2025-08-22 10:27:47,893 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: fdcfee8c-ffce-437c-8e5b-21a7171415a5 status=filled
+2025-08-22 10:27:47,903 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 5bd27445-6f20-4fba-996d-e97ebc9b9644 status=filled
+2025-08-22 10:27:47,912 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 8ab487e3-15ee-4df0-96f3-3cc764315e79 status=filled
+2025-08-22 10:27:47,923 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: d3208fb5-ba48-4d24-9180-230e939faee4 status=filled
+2025-08-22 10:27:47,932 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: b727ef93-b7d4-4701-ac88-3d43db3e2449 status=filled
+2025-08-22 10:27:47,942 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: d22d8e20-dc01-4ff1-aa86-29126cf40d97 status=filled
+2025-08-22 10:27:47,952 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: bd8f05fe-0a3d-4eff-a1d8-0ea22dcdc89c status=filled
+2025-08-22 10:27:47,962 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 7a6af6dc-3ff2-43a0-8005-db5a9acdbf4c status=filled
+2025-08-22 10:27:47,971 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 14f9b4d0-529c-41cb-9ded-814f4c2928ca status=filled
+2025-08-22 10:27:47,981 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: ffc1b658-78f9-4769-8ce5-c88bca8844ce status=filled
+2025-08-22 10:27:47,991 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 20864e99-6939-4346-9da5-0051a38e39a0 status=filled
+2025-08-22 10:27:48,001 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: fb700706-9240-41a9-b12e-0b50d630b856 status=filled
+2025-08-22 10:27:48,011 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 27efd212-0447-47bf-8850-6896057284d6 status=filled
+2025-08-22 10:27:48,021 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 93403a0f-c05a-4b01-9279-0e65ff297ef7 status=filled
+2025-08-22 10:27:48,030 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: c61cfacd-285b-46f3-ac05-adca3adb6e91 status=filled
+2025-08-22 10:27:48,040 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 457d42ff-6fd7-4c10-a29f-14858e33d90f status=filled
+2025-08-22 10:27:48,050 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 331df60c-1954-411a-9a75-75765d4aa872 status=filled
+2025-08-22 10:27:48,060 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 39aa9832-f1ab-485d-8221-29522985794a status=filled
+2025-08-22 10:27:48,070 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 6515672b-3fbd-4a11-b811-d26d26a73943 status=filled
+2025-08-22 10:27:48,080 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 946ef071-b07e-420e-8660-6e37a616d200 status=filled
+2025-08-22 10:27:48,089 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 1a3cd91a-a8f8-429b-a4dd-0d0c556bd4cd status=filled
+2025-08-22 10:27:48,099 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 3b0fde00-e705-4a0d-b6fa-28cafe4535d5 status=filled
+2025-08-22 10:27:48,109 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: c66aea83-500d-45a3-ae11-71ac123dc3b9 status=filled
+2025-08-22 10:27:48,118 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 3845d3d8-dd46-4bb4-841f-799656f36521 status=filled
+2025-08-22 10:27:48,128 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: 85f0ed49-68b7-448c-ae1e-de7670f75f37 status=filled
+2025-08-22 10:27:48,137 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: fb2f8dc1-0122-49ea-9067-9570506afa91 status=filled
+2025-08-22 10:27:48,147 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: d409028d-f5bc-4524-b02f-f007cc21d39a status=filled
+2025-08-22 10:27:48,157 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: ce94ab1d-4adf-4a6e-8f9f-efa240a368d7 status=filled
+2025-08-22 10:27:48,167 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: af7d1e1d-18f4-46f8-bd3e-55fcdbf5efbd status=filled
+2025-08-22 10:27:48,176 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: db139f98-a2c7-46f8-a2c6-b27d69c71661 status=filled
+2025-08-22 10:27:48,186 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - Order updated: efa2b1f3-6295-470b-8155-55fd93286e53 status=filled
+2025-08-22 10:27:48,305 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - Position updated: default AAPL 30.0
+2025-08-22 10:27:48,316 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - Position updated: default AI 1.0
+2025-08-22 10:27:48,328 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - Position updated: default BTCUSD 0.00349125
+2025-08-22 10:27:48,339 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - Position updated: default TSLA 15.0
+2025-08-22 10:29:45,944 - src.braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 10:29:45,944 - src.braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 10:29:45,944 - src.braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 10:29:46,388 - server_manager.version_loader - INFO - Successfully loaded version handler: development from /Users/yogesh.patil/Documents/projects/personal/algo-trading/BrainTransactionsManager/mcp-server/laxmi_mcp_server.py
+2025-08-22 10:29:46,388 - server_manager.version_loader - INFO - Created FastAPI app for version: development
+2025-08-22 10:29:46,388 - server_manager.multi_version_server - INFO - Successfully loaded and mounted version: development
+2025-08-22 10:29:46,388 - server_manager.multi_version_server - INFO - Loaded API versions: ['v1.0.0', 'development']
+2025-08-22 10:29:46,388 - server_manager.multi_version_server - INFO - 🔧 Development mode is active
+2025-08-22 11:03:12,798 - server_manager.multi_version_server - INFO - Shutting down Laxmi-yantra Multi-Version Trading Server
+2025-08-22 11:03:12,799 - server_manager.version_loader - INFO - Unloaded version: v1.0.0
+2025-08-22 11:03:12,799 - server_manager.multi_version_server - INFO - Successfully unloaded version: v1.0.0
+2025-08-22 11:03:12,799 - server_manager.version_loader - INFO - Unloaded version: development
+2025-08-22 11:03:12,799 - server_manager.multi_version_server - INFO - Successfully unloaded version: development
+2025-08-22 11:03:12,799 - server_manager.multi_version_server - INFO - 🙏 Server shutdown complete. May prosperity continue to flow!
+2025-08-22 11:03:50,076 - src.braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 11:03:50,076 - src.braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 11:03:50,076 - src.braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 11:03:50,523 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - 🙏 Initializing Laxmi-yantra Trading Manager - May Goddess Laxmi bless this system
+2025-08-22 11:03:50,523 - src.braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 11:03:50,523 - src.braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 11:03:50,523 - src.braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 11:03:50,523 - src.braintransactions.core.base_transaction - INFO - 🙏 Initializing Laxmi-yantra transaction manager
+2025-08-22 11:03:50,919 - src.braintransactions.core.config - INFO - ✅ Alpaca credentials validated - Account status: ACTIVE
+2025-08-22 11:03:50,921 - src.braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 11:03:51,068 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - 🙏 Laxmi-yantra Portfolio Manager initialized
+2025-08-22 11:03:51,109 - src.braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 11:03:51,109 - src.braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 11:03:51,119 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - 🙏 Laxmi-yantra Order Manager initialized
+2025-08-22 11:03:51,157 - src.braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 11:03:51,487 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - 🔧 Laxmi-yantra components initialized successfully
+2025-08-22 11:03:51,488 - src.braintransactions.core.base_transaction - INFO - ✅ Laxmi-yantra transaction manager initialized successfully
+2025-08-22 11:03:51,488 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - ✅ Laxmi-yantra initialized successfully in paper trading mode
+2025-08-22 11:03:51,488 - laxmi_mcp_server - INFO - 🙏 Laxmi-yantra trading manager initialized
+2025-08-22 11:08:53,956 - server_manager.multi_version_server - INFO - Shutting down Laxmi-yantra Multi-Version Trading Server
+2025-08-22 11:08:53,958 - server_manager.version_loader - INFO - Unloaded version: v1.0.0
+2025-08-22 11:08:53,958 - server_manager.multi_version_server - INFO - Successfully unloaded version: v1.0.0
+2025-08-22 11:08:53,959 - server_manager.multi_version_server - INFO - Successfully unloaded version: development
+2025-08-22 11:08:53,959 - server_manager.multi_version_server - INFO - 🙏 Server shutdown complete. May prosperity continue to flow!
+2025-08-22 11:09:10,981 - src.braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 11:09:10,981 - src.braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 11:09:10,981 - src.braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 11:09:11,414 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - 🙏 Initializing Laxmi-yantra Trading Manager - May Goddess Laxmi bless this system
+2025-08-22 11:09:11,414 - src.braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 11:09:11,414 - src.braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 11:09:11,414 - src.braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 11:09:11,414 - src.braintransactions.core.base_transaction - INFO - 🙏 Initializing Laxmi-yantra transaction manager
+2025-08-22 11:09:11,775 - src.braintransactions.core.config - INFO - ✅ Alpaca credentials validated - Account status: ACTIVE
+2025-08-22 11:09:11,777 - src.braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 11:09:11,824 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - 🙏 Laxmi-yantra Portfolio Manager initialized
+2025-08-22 11:09:11,868 - src.braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 11:09:11,868 - src.braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 11:09:11,878 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - 🙏 Laxmi-yantra Order Manager initialized
+2025-08-22 11:09:11,916 - src.braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 11:09:12,271 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - 🔧 Laxmi-yantra components initialized successfully
+2025-08-22 11:09:12,271 - src.braintransactions.core.base_transaction - INFO - ✅ Laxmi-yantra transaction manager initialized successfully
+2025-08-22 11:09:12,271 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - ✅ Laxmi-yantra initialized successfully in paper trading mode
+2025-08-22 11:09:12,272 - laxmi_mcp_server - INFO - 🙏 Laxmi-yantra trading manager initialized
+2025-08-22 11:09:12,272 - server_manager.version_loader - ERROR - Version v1.0.0 account info error: 'LaxmiYantra' object has no attribute 'alpaca_client'
+2025-08-22 11:09:35,466 - server_manager.version_loader - ERROR - Version v1.0.0 account status error: 'LaxmiYantra' object has no attribute 'alpaca_client'
+2025-08-22 11:09:38,465 - server_manager.version_loader - ERROR - Version v1.0.0 account status error: 'LaxmiYantra' object has no attribute 'alpaca_client'
+2025-08-22 11:09:47,130 - server_manager.version_loader - ERROR - Development account status error: 'LaxmiYantra' object has no attribute 'alpaca_client'
+2025-08-22 11:10:09,695 - server_manager.version_loader - ERROR - Version v1.0.0 account info error: 'LaxmiYantra' object has no attribute 'alpaca_client'
+2025-08-22 11:12:57,536 - server_manager.multi_version_server - INFO - Shutting down Laxmi-yantra Multi-Version Trading Server
+2025-08-22 11:12:57,538 - server_manager.version_loader - INFO - Unloaded version: v1.0.0
+2025-08-22 11:12:57,538 - server_manager.multi_version_server - INFO - Successfully unloaded version: v1.0.0
+2025-08-22 11:12:57,538 - server_manager.multi_version_server - INFO - Successfully unloaded version: development
+2025-08-22 11:12:57,538 - server_manager.multi_version_server - INFO - 🙏 Server shutdown complete. May prosperity continue to flow!
+2025-08-22 11:13:46,175 - src.braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 11:13:46,175 - src.braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 11:13:46,175 - src.braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 11:13:46,619 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - 🙏 Initializing Laxmi-yantra Trading Manager - May Goddess Laxmi bless this system
+2025-08-22 11:13:46,619 - src.braintransactions.core.config - INFO - 🙏 BrainTransactionsManager configuration loaded successfully
+2025-08-22 11:13:46,619 - src.braintransactions.core.config - INFO - Paper trading mode: True
+2025-08-22 11:13:46,619 - src.braintransactions.core.config - INFO - Alpaca endpoint: https://paper-api.alpaca.markets
+2025-08-22 11:13:46,619 - src.braintransactions.core.base_transaction - INFO - 🙏 Initializing Laxmi-yantra transaction manager
+2025-08-22 11:13:46,974 - src.braintransactions.core.config - INFO - ✅ Alpaca credentials validated - Account status: ACTIVE
+2025-08-22 11:13:46,976 - src.braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 11:13:47,025 - src.braintransactions.modules.laxmi_yantra.portfolio_manager - INFO - 🙏 Laxmi-yantra Portfolio Manager initialized
+2025-08-22 11:13:47,065 - src.braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 11:13:47,065 - src.braintransactions.database.connection - INFO - 🙏 Initializing database connection manager
+2025-08-22 11:13:47,074 - src.braintransactions.modules.laxmi_yantra.order_manager - INFO - 🙏 Laxmi-yantra Order Manager initialized
+2025-08-22 11:13:47,111 - src.braintransactions.database.connection - INFO - ✅ Database tables created successfully
+2025-08-22 11:13:47,438 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - 🔧 Laxmi-yantra components initialized successfully
+2025-08-22 11:13:47,439 - src.braintransactions.core.base_transaction - INFO - ✅ Laxmi-yantra transaction manager initialized successfully
+2025-08-22 11:13:47,439 - src.braintransactions.modules.laxmi_yantra.trading_manager - INFO - ✅ Laxmi-yantra initialized successfully in paper trading mode
+2025-08-22 11:13:47,439 - laxmi_mcp_server - INFO - 🙏 Laxmi-yantra trading manager initialized
+2025-08-22 11:15:43,975 - server_manager.multi_version_server - INFO - Shutting down Laxmi-yantra Multi-Version Trading Server
+2025-08-22 11:15:43,976 - server_manager.version_loader - INFO - Unloaded version: v1.0.0
+2025-08-22 11:15:43,976 - server_manager.multi_version_server - INFO - Successfully unloaded version: v1.0.0
+2025-08-22 11:15:43,976 - server_manager.multi_version_server - INFO - Successfully unloaded version: development
+2025-08-22 11:15:43,976 - server_manager.multi_version_server - INFO - 🙏 Server shutdown complete. May prosperity continue to flow!

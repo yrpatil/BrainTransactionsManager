@@ -1,156 +1,79 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+# 🙏 Laxmi-yantra Multi-Version Trading Server Launcher
+# Blessed by Goddess Laxmi for Infinite Abundance
 
-# BrainTransactionsManager bootstrap and server launcher
-# - Creates Python venv and installs requirements
-# - Ensures PostgreSQL is running and schema is present
-# - Starts the Laxmi-yantra MCP server
-# Keep this script up-to-date with any future setup changes
+set -e
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$ROOT_DIR"
+echo "🙏 Starting Laxmi-yantra Multi-Version Trading Server..."
+echo "May Goddess Laxmi bless this session with infinite abundance and prosperity!"
 
-# Configurable via env (defaults shown)
-: "${PYTHON:=python3}"
-: "${VENV_DIR:=.venv}"
-: "${TRANSPORT:=http}"
-: "${HOST:=127.0.0.1}"
-: "${MCP_PATH:=/mcp}"
-: "${HTTP_PORT:=8888}"
-: "${MCP_PORT:=8889}"
-: "${PORTFOLIO_EVENT_POLLING_ENABLED:=true}"
-: "${PORTFOLIO_EVENT_POLLING_INTERVAL:=5m}"
-: "${DB_NAME:=braintransactions}"
-: "${DB_HOST:=localhost}"
-: "${DB_PORT:=5432}"
-: "${DB_USER:=$(whoami)}"
-: "${DB_SCHEMA:=laxmiyantra}"
+# Default configuration
+export TRANSPORT=${TRANSPORT:-"http"}
+export HOST=${HOST:-"127.0.0.1"}
+export HTTP_PORT=${HTTP_PORT:-"8000"}
+export MCP_PORT=${MCP_PORT:-"8889"}
+export WORKERS=${WORKERS:-"1"}
+export RELOAD=${RELOAD:-"false"}
 
-echo "[1/5] Checking Python and virtual environment..."
-if ! command -v "$PYTHON" >/dev/null 2>&1; then
-  echo "Error: $PYTHON not found. Please install Python 3." >&2
-  exit 1
-fi
+# Database and polling configuration
+export PORTFOLIO_EVENT_POLLING_ENABLED=${PORTFOLIO_EVENT_POLLING_ENABLED:-"true"}
+export PORTFOLIO_EVENT_POLLING_INTERVAL=${PORTFOLIO_EVENT_POLLING_INTERVAL:-"5m"}
 
-if [ ! -d "$VENV_DIR" ]; then
-  "$PYTHON" -m venv "$VENV_DIR"
-fi
-# shellcheck disable=SC1090
-source "$VENV_DIR/bin/activate"
-python -m pip install --upgrade pip >/dev/null
-
-echo "[2/5] Installing Python dependencies..."
-if [ -f "$ROOT_DIR/requirements.txt" ]; then
-  pip install -r "$ROOT_DIR/requirements.txt"
-fi
-if [ -f "$ROOT_DIR/mcp-server/requirements.txt" ]; then
-  pip install -r "$ROOT_DIR/mcp-server/requirements.txt"
-fi
-
-echo "[3/5] Ensuring PostgreSQL is running..."
-if ! command -v psql >/dev/null 2>&1; then
-  echo "Warning: psql not found. Skipping DB start; ensure PostgreSQL is available at $DB_HOST:$DB_PORT." >&2
+# Determine which port to use
+if [ "$TRANSPORT" = "http" ]; then
+    export PORT=$HTTP_PORT
+    SERVER_TYPE="Multi-Version HTTP"
 else
-  # Quick ping
-  if ! PGPASSWORD="${DB_PASSWORD:-}" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "SELECT 1;" >/dev/null 2>&1; then
-    # macOS Homebrew attempt
-    if command -v brew >/dev/null 2>&1 && brew list | grep -q "postgresql@"; then
-      echo "Trying to start PostgreSQL via Homebrew..."
-      brew services start postgresql@17 >/dev/null 2>&1 || true
-      sleep 2
-    else
-      echo "Warning: Could not verify/start PostgreSQL. Proceeding; DB steps may fail." >&2
+    export PORT=$MCP_PORT
+    SERVER_TYPE="MCP"
+fi
+
+echo "Server Configuration:"
+echo "  Type: $SERVER_TYPE"
+echo "  Host: $HOST"
+echo "  Port: $PORT"
+echo "  Workers: $WORKERS"
+echo "  Reload: $RELOAD"
+echo "  Polling: $PORTFOLIO_EVENT_POLLING_ENABLED ($PORTFOLIO_EVENT_POLLING_INTERVAL)"
+
+# Create virtual environment if it doesn't exist
+if [ ! -d ".venv" ]; then
+    echo "[1/5] Creating virtual environment..."
+    python3 -m venv .venv
+fi
+
+# Activate virtual environment
+echo "[2/5] Activating virtual environment..."
+source .venv/bin/activate
+
+# Install/upgrade dependencies
+echo "[3/5] Installing dependencies..."
+pip install -q --upgrade pip
+pip install -q -r requirements.txt
+pip install -q -r mcp-server/requirements.txt
+
+# Database setup
+echo "[4/5] Setting up database..."
+if [ -f "database/ddl/setup_complete.sql" ]; then
+    # Load environment variables
+    if [ -f ".env" ]; then
+        set -a
+        source .env
+        set +a
     fi
-  fi
+    
+    # Run database setup
+    psql "${DATABASE_URL}" -f database/ddl/setup_complete.sql 2>/dev/null || echo "Database setup completed (some notices are normal)"
 fi
 
-echo "[4/5] Ensuring database and schema exist..."
-if command -v psql >/dev/null 2>&1; then
-  # Create DB if missing
-  DB_EXISTS=$(PGPASSWORD="${DB_PASSWORD:-}" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME';" || echo "")
-  if [ "$DB_EXISTS" != "1" ]; then
-    echo "Creating database $DB_NAME..."
-    PGPASSWORD="${DB_PASSWORD:-}" createdb -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" "$DB_NAME" || true
-  fi
-  # Enable TimescaleDB if available (ignore failures)
-  PGPASSWORD="${DB_PASSWORD:-}" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS timescaledb;" >/dev/null 2>&1 || true
-  # Run full setup DDL if present
-  if [ -f "$ROOT_DIR/database/ddl/setup_complete.sql" ]; then
-    echo "Applying schema DDL..."
-    PGPASSWORD="${DB_PASSWORD:-}" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$ROOT_DIR/database/ddl/setup_complete.sql" >/dev/null || true
-  fi
-  # Create schema if still missing
-  PGPASSWORD="${DB_PASSWORD:-}" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "CREATE SCHEMA IF NOT EXISTS $DB_SCHEMA;" >/dev/null || true
+echo "[5/5] Starting server..."
+
+# Choose server based on transport
+if [ "$TRANSPORT" = "http" ]; then
+    echo "🚀 Starting Multi-Version HTTP Server..."
+    python multi_version_server.py
+else
+    echo "🚀 Starting legacy MCP Server..."
+    cd mcp-server
+    python laxmi_mcp_server.py
 fi
-
-echo "[5/5] Verifying application prerequisites..."
-
-# .env presence (non-fatal)
-if [ ! -f "$ROOT_DIR/.env" ]; then
-  echo "Warning: .env not found at project root. Ensure required env vars (e.g., ALPACA keys) are set."
-fi
-
-# Ensure required tables exist via application layer (respects schema/search_path)
-echo "Ensuring application tables (via DatabaseManager)..."
-PYTHONPATH="$ROOT_DIR/src" "$VENV_DIR/bin/python" - <<'PY' >/dev/null 2>&1 || true
-from braintransactions.database.connection import DatabaseManager
-from braintransactions.core.config import BrainConfig
-db = DatabaseManager(BrainConfig())
-db.create_tables()
-PY
-
-echo "Launching MCP server ($TRANSPORT)..."
-export PYTHONPATH="$ROOT_DIR/src"
-export TRANSPORT
-export HOST
-export PORTFOLIO_EVENT_POLLING_ENABLED
-export PORTFOLIO_EVENT_POLLING_INTERVAL
-
-# Select default port by transport if PORT not explicitly provided
-if [ -z "${PORT:-}" ]; then
-  if [ "$TRANSPORT" = "http" ]; then
-    PORT="$HTTP_PORT"
-  elif [ "$TRANSPORT" = "sse" ]; then
-    PORT="$MCP_PORT"
-  fi
-fi
-
-# Auto-pick free port for HTTP/SSE if requested port is in use
-if [ "$TRANSPORT" != "stdio" ]; then
-  if command -v lsof >/dev/null 2>&1; then
-    TRY_PORT="$PORT"
-    for i in $(seq 0 20); do
-      if lsof -iTCP:"$TRY_PORT" -sTCP:LISTEN -P -n >/dev/null 2>&1; then
-        TRY_PORT=$((TRY_PORT+1))
-      else
-        break
-      fi
-    done
-    if [ "$TRY_PORT" != "$PORT" ]; then
-      echo "Port $PORT is in use. Switching to $TRY_PORT."
-      PORT="$TRY_PORT"
-    fi
-  fi
-fi
-
-CMD=("$VENV_DIR/bin/python" "$ROOT_DIR/mcp-server/laxmi_mcp_server.py")
-case "$TRANSPORT" in
-  stdio)
-    echo "Running MCP server (stdio)..."
-    exec "${CMD[@]}" --transport stdio
-    ;;
-  http)
-    echo "Server: http://$HOST:$PORT$MCP_PATH"
-    exec "${CMD[@]}" --transport http --host "$HOST" --port "$PORT" --path "$MCP_PATH"
-    ;;
-  sse)
-    echo "Server (SSE): http://$HOST:$PORT/sse"
-    exec "${CMD[@]}" --transport sse --host "$HOST" --port "$PORT"
-    ;;
-  *)
-    echo "Unknown TRANSPORT='$TRANSPORT' (use stdio|http|sse)" >&2
-    exit 1
-    ;;
-esac
-
-

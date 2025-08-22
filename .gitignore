@@ -12,7 +12,8 @@ env/
 .DS_Store
 
 # Logs
-logs/*.log
+logs/
+*.log
 
 # Env
 .env
@@ -24,6 +25,7 @@ dist/
 
 # IDE
 .idea/
+.iml
 .vscode/
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -129,7 +131,7 @@ ipython_config.py
 #poetry.lock
 
 # pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
 #pdm.lock
 #   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
 #   in version control.
@@ -219,3 +221,6 @@ logs/
 # Backup files
 *.bak
 *.backup
+
+# Archives
+archives/
