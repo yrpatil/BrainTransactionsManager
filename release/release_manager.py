@@ -56,6 +56,15 @@ class ReleaseManager:
         # Add handler to logger
         logger.addHandler(file_handler)
         
+    def prepare_git_identity(self) -> None:
+        """Configure Git CLI to use the personal GitHub identity for this repo."""
+        try:
+            subprocess.run(['git', 'config', 'user.name', 'yrpatil'], check=True, cwd=self.base_path)
+            subprocess.run(['git', 'config', 'user.email', 'yrpatil07@gmail.com'], check=True, cwd=self.base_path)
+            logger.info("Configured Git identity for this release (user.name=user.email set)")
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Failed to configure Git identity: {e}")
+
     def create_release(
         self,
         version: str,
@@ -131,13 +140,13 @@ class ReleaseManager:
                 self.notes_generator.save_release_notes(version, release_notes)
             release_summary["steps"]["release_notes"] = {"status": "completed" if not dry_run else "skipped"}
             
-            # Step 5: Generate API documentation
-            logger.info("📚 Generating API documentation...")
+            # Step 5: (Moved final docs generation to end); perform an initial generation now to capture pre-commit state
+            logger.info("📚 Preparing API documentation (initial)...")
             if not dry_run:
                 docs = self.docs_generator.generate_version_docs(version)
                 self.docs_generator.save_version_docs(version, docs)
                 self.docs_generator.update_main_docs_index(version)
-            release_summary["steps"]["documentation"] = {"status": "completed" if not dry_run else "skipped"}
+            release_summary["steps"]["documentation_initial"] = {"status": "completed" if not dry_run else "skipped"}
             
             # Step 6: Create Git commit and tag
             logger.info("🏷️ Creating Git commit and tag...")
@@ -145,9 +154,12 @@ class ReleaseManager:
                 self.create_release_commit(version)
             release_summary["steps"]["git_commit"] = {"status": "completed" if not dry_run else "skipped"}
             
-            # Step 7: GitHub release (optional)
+            # Step 7: Prepare Git identity and GitHub release (optional)
             github_result = {"status": "skipped"}
             if push_to_github and not dry_run:
+                # Ensure repo uses personal identity before any GitHub operations
+                logger.info("👤 Preparing Git identity for GitHub publishing...")
+                self.prepare_git_identity()
                 logger.info("🌐 Publishing to GitHub...")
                 try:
                     github_release = self.github_publisher.create_release(
@@ -176,6 +188,14 @@ class ReleaseManager:
             if not dry_run:
                 self.run_post_release_tasks(version)
             release_summary["steps"]["post_release"] = {"status": "completed" if not dry_run else "skipped"}
+            
+            # Step 9: Finalize API documentation at end of release to capture final status
+            logger.info("📚 Finalizing API documentation (end of release)...")
+            if not dry_run:
+                docs = self.docs_generator.generate_version_docs(version)
+                self.docs_generator.save_version_docs(version, docs)
+                self.docs_generator.update_main_docs_index(version)
+            release_summary["steps"]["documentation_final"] = {"status": "completed" if not dry_run else "skipped"}
             
             release_summary["status"] = "completed"
             logger.info(f"✅ Release {version} completed successfully!")

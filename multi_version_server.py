@@ -11,6 +11,7 @@ import asyncio
 import logging
 import sys
 import os
+import argparse
 from pathlib import Path
 
 # Add parent directory to path for imports
@@ -31,11 +32,17 @@ def main():
     logger.info("🙏 Starting Laxmi-yantra Multi-Version Trading Server")
     logger.info("May Goddess Laxmi bless this session with infinite abundance and prosperity!")
     
-    # Get configuration from environment
-    host = os.getenv('HOST', '127.0.0.1')
-    port = int(os.getenv('PORT', '8000'))
-    workers = int(os.getenv('WORKERS', '1'))
-    reload = os.getenv('RELOAD', 'false').lower() == 'true'
+    # Parse CLI flags (override env when provided)
+    parser = argparse.ArgumentParser(description='Laxmi-yantra Multi-Version Trading Server')
+    parser.add_argument('--host', default=os.getenv('HOST', '127.0.0.1'))
+    parser.add_argument('--port', type=int, default=int(os.getenv('PORT', '8000')))
+    parser.add_argument('--workers', type=int, default=int(os.getenv('WORKERS', '1')))
+    parser.add_argument('--reload', action='store_true', default=os.getenv('RELOAD', 'false').lower() == 'true')
+    args = parser.parse_args()
+    host = args.host
+    port = args.port
+    workers = args.workers
+    reload = bool(args.reload)
     
     # Initialize multi-version server
     try:

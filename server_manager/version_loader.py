@@ -578,6 +578,31 @@ class VersionLoader:
                     "version": version
                 }
 
+        # Agent guide endpoint: return latest generated guide for this version
+        @app.get("/get_agent_guide")
+        async def get_agent_guide():
+            try:
+                from pathlib import Path
+                docs_path = Path.cwd() / "api_versions" / version / "AI_AGENT_USAGE_GUIDE.md"
+                if not docs_path.exists():
+                    # Generate on-demand if missing
+                    try:
+                        from release.api_docs_generator import APIDocsGenerator
+                        g = APIDocsGenerator(str(Path.cwd()))
+                        docs = g.generate_version_docs(version)
+                        g.save_version_docs(version, docs)
+                    except Exception as ge:
+                        logger.warning(f"On-demand guide generation failed: {ge}")
+                # Read and return as text/markdown
+                if docs_path.exists():
+                    with open(docs_path, 'r') as f:
+                        content = f.read()
+                    return content
+                return {"error": "Guide not available", "version": version}
+            except Exception as e:
+                logger.error(f"Failed to load agent guide: {e}")
+                return {"error": str(e), "version": version}
+
         # Analytics: performance portfolio summary with PnL
         @app.get("/analytics/performance/portfolio_summary")
         async def analytics_portfolio_summary(strategy_name: str | None = None):
