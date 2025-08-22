@@ -224,3 +224,4 @@ logs/
 
 # Archives
 archives/
+logs/*
