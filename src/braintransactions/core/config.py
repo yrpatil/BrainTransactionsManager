@@ -1,171 +1,213 @@
 """
-Configuration management for BrainTransactionsManager
+Unified Configuration Management for BrainTransactionsManager v2.0.0
 Blessed by Goddess Laxmi for Infinite Abundance 🙏
 
-This module provides centralized configuration management following SRM principles:
-- Simplicity: Clear, consistent configuration structure
-- Reliability: Environment validation and secure secret management
-- Maintainability: Single source of truth for all settings
+Single source of truth for all configuration with environment-based overrides.
+Follows SRM principles: Simple, Reliable, Maintainable.
 """
 
 import os
+import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-import logging
+from dataclasses import dataclass, field
 from dotenv import load_dotenv
-from dataclasses import dataclass
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
-logger = logging.getLogger(__name__)
 
 @dataclass
-class TransactionConfig:
-    """Configuration for transaction system behavior."""
+class DatabaseConfig:
+    """Database configuration."""
+    host: str = "localhost"
+    port: int = 5432
+    name: str = "braintransactions"
+    user: str = ""  # Will be set during validation
+    password: str = ""  # Will be set during validation
+    schema: str = "laxmiyantra"
+    pool_size: int = 10
+    connection_timeout: int = 30
     
-    # Kill switch settings
-    kill_switch_timeout: int = 30
-    
-    # Retry settings
-    max_retry_attempts: int = 3
-    retry_delay_seconds: float = 1.0
-    
-    # Position management
-    default_position_size: float = 100.0
-    max_position_size_percent: float = 10.0
-    
-    # Risk management
-    max_daily_loss_percent: float = 5.0
-    max_single_asset_allocation: float = 25.0
-    
-    # Paper trading
+    @property
+    def url(self) -> str:
+        if self.password:
+            return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
+        else:
+            return f"postgresql://{self.user}@{self.host}:{self.port}/{self.name}"
+
+
+@dataclass
+class TradingConfig:
+    """Trading system configuration."""
     paper_trading: bool = True
     paper_trading_capital: float = 100000.0
+    default_position_size: float = 100.0
+    max_position_size_percent: float = 10.0
+    max_daily_loss_percent: float = 5.0
+    max_single_asset_allocation: float = 25.0
+    kill_switch_timeout: int = 30
+    max_retry_attempts: int = 3
+    retry_delay_seconds: float = 1.0
+
+
+@dataclass
+class AlpacaConfig:
+    """Alpaca API configuration."""
+    api_key: str = ""
+    secret_key: str = ""
+    base_url: str = "https://paper-api.alpaca.markets"
+    data_url: str = "https://data.alpaca.markets/v2"
+    
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.api_key and self.secret_key)
+
+
+@dataclass
+class SecurityConfig:
+    """Security configuration."""
+    api_rate_limit: int = 1000  # requests per hour
+    cors_origins: List[str] = field(default_factory=lambda: ["http://localhost:3000"])
+    session_timeout: int = 3600  # seconds
+    max_login_attempts: int = 5
+
+
+@dataclass
+class MonitoringConfig:
+    """Monitoring and polling configuration."""
+    price_poll_interval: int = 60  # seconds
+    portfolio_sync_interval: int = 300  # seconds
+    order_reconcile_interval: int = 30  # seconds
+    health_check_interval: int = 30  # seconds
+    log_level: str = "INFO"
+    log_to_file: bool = True
+    log_to_db: bool = False
+
 
 class BrainConfig:
     """
-    Centralized configuration management for BrainTransactionsManager.
+    Unified configuration manager for v2.0.0.
     
     Features:
-    • Environment variable validation
-    • Secure credential management
-    • Transaction system configuration
-    • Database connection settings
-    • Logging configuration
+    • Single configuration file with environment overrides
+    • Type-safe configuration sections
+    • Environment-specific settings
+    • Validation and defaults
+    • Simple and maintainable
     """
     
-    # Required environment variables
-    REQUIRED_ENV_VARS = [
-        'ALPACA_API_KEY',
-        'ALPACA_SECRET_KEY'
-    ]
-    
-    # Optional environment variables with defaults
-    OPTIONAL_ENV_VARS = {
-        'ALPACA_BASE_URL': 'https://paper-api.alpaca.markets',
-        'ALPACA_DATA_URL': 'https://data.alpaca.markets/v2',
-        'DB_HOST': 'localhost',
-        'DB_PORT': '5432',
-        'DB_NAME': 'braintransactions',
-        'DB_USER': 'brain_user',
-        'DB_PASSWORD': 'brain_password',
-        'DB_SCHEMA': 'laxmiyantra',
-        'LOG_LEVEL': 'INFO',
-        'LOG_FILE_PATH': 'logs/braintransactions.log',
-        'LOG_TO_DB': 'true',
-        'PAPER_TRADING': 'true',
-        'PAPER_TRADING_CAPITAL': '100000.0',
-        'DEFAULT_POSITION_SIZE': '100.0',
-        'KILL_SWITCH_TIMEOUT': '30',
-        'MAX_RETRY_ATTEMPTS': '3',
-        'RETRY_DELAY_SECONDS': '1.0',
-        'MAX_POSITION_SIZE_PERCENT': '10.0',
-        'MAX_DAILY_LOSS_PERCENT': '5.0',
-        'MAX_SINGLE_ASSET_ALLOCATION': '25.0'
-    }
-    
-    def __init__(self):
-        """Initialize configuration with validation."""
-        self._validate_environment()
+    def __init__(self, config_file: Optional[str] = None, environment: str = "development"):
+        """
+        Initialize configuration.
+        
+        Args:
+            config_file: Path to configuration file (optional)
+            environment: Environment name (development, production, testing)
+        """
+        self.environment = environment
+        self.config_file = config_file or f"config/{environment}.yaml"
+        
+        # Initialize configuration sections
+        self.database = DatabaseConfig()
+        self.trading = TradingConfig()
+        self.alpaca = AlpacaConfig()
+        self.security = SecurityConfig()
+        self.monitoring = MonitoringConfig()
+        
+        # Load configuration
         self._load_configuration()
+        self._validate_configuration()
         
         # Setup logging
         self._setup_logging()
-        
-        logger.info("🙏 BrainTransactionsManager configuration loaded successfully")
-        logger.info(f"Paper trading mode: {self.paper_trading}")
-        logger.info(f"Alpaca endpoint: {self.alpaca_base_url}")
     
-    def _validate_environment(self) -> None:
-        """Validate that all required environment variables are set."""
-        missing_vars = []
-        for var in self.REQUIRED_ENV_VARS:
-            if not os.getenv(var):
-                missing_vars.append(var)
+    def _load_configuration(self):
+        """Load configuration from file and environment variables."""
+        # Load from YAML file if exists
+        config_path = Path(self.config_file)
+        file_config = {}
         
-        if missing_vars:
-            raise ValueError(
-                f"Missing required environment variables: {missing_vars}. "
-                "Please check your .env file or set these environment variables."
-            )
-    
-    def _load_configuration(self) -> None:
-        """Load all configuration values from environment."""
-        
-        # Alpaca API configuration
-        self.alpaca_api_key = os.getenv('ALPACA_API_KEY')
-        self.alpaca_secret_key = os.getenv('ALPACA_SECRET_KEY')
-        self.alpaca_base_url = os.getenv('ALPACA_BASE_URL', self.OPTIONAL_ENV_VARS['ALPACA_BASE_URL'])
-        self.alpaca_data_url = os.getenv('ALPACA_DATA_URL', self.OPTIONAL_ENV_VARS['ALPACA_DATA_URL'])
+        if config_path.exists():
+            try:
+                with open(config_path, 'r') as f:
+                    file_config = yaml.safe_load(f) or {}
+            except Exception as e:
+                print(f"Warning: Could not load config file {config_path}: {e}")
         
         # Database configuration
-        self.db_host = os.getenv('DB_HOST', self.OPTIONAL_ENV_VARS['DB_HOST'])
-        self.db_port = int(os.getenv('DB_PORT', self.OPTIONAL_ENV_VARS['DB_PORT']))
-        self.db_name = os.getenv('DB_NAME', self.OPTIONAL_ENV_VARS['DB_NAME'])
-        self.db_user = os.getenv('DB_USER', self.OPTIONAL_ENV_VARS['DB_USER'])
-        self.db_password = os.getenv('DB_PASSWORD', self.OPTIONAL_ENV_VARS['DB_PASSWORD'])
-        self.db_schema = os.getenv('DB_SCHEMA', self.OPTIONAL_ENV_VARS['DB_SCHEMA'])
-        self.db_url = f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        db_config = file_config.get('database', {})
+        self.database.host = os.getenv('DB_HOST', db_config.get('host', self.database.host))
+        self.database.port = int(os.getenv('DB_PORT', db_config.get('port', self.database.port)))
+        self.database.name = os.getenv('DB_NAME', db_config.get('name', self.database.name))
+        self.database.user = os.getenv('DB_USER', db_config.get('user', self.database.user))
+        self.database.password = os.getenv('DB_PASSWORD', db_config.get('password', self.database.password))
+        self.database.schema = os.getenv('DB_SCHEMA', db_config.get('schema', self.database.schema))
+        self.database.pool_size = int(os.getenv('DB_POOL_SIZE', db_config.get('pool_size', self.database.pool_size)))
         
-        # Logging configuration
-        self.log_level = os.getenv('LOG_LEVEL', self.OPTIONAL_ENV_VARS['LOG_LEVEL'])
-        self.log_file_path = os.getenv('LOG_FILE_PATH', self.OPTIONAL_ENV_VARS['LOG_FILE_PATH'])
+        # Trading configuration
+        trading_config = file_config.get('trading', {})
+        self.trading.paper_trading = os.getenv('PAPER_TRADING', str(trading_config.get('paper_trading', self.trading.paper_trading))).lower() == 'true'
+        self.trading.paper_trading_capital = float(os.getenv('PAPER_TRADING_CAPITAL', trading_config.get('paper_trading_capital', self.trading.paper_trading_capital)))
+        self.trading.max_position_size_percent = float(os.getenv('MAX_POSITION_SIZE_PERCENT', trading_config.get('max_position_size_percent', self.trading.max_position_size_percent)))
         
-        # Transaction configuration
-        self.transaction_config = TransactionConfig(
-            kill_switch_timeout=int(os.getenv('KILL_SWITCH_TIMEOUT', self.OPTIONAL_ENV_VARS['KILL_SWITCH_TIMEOUT'])),
-            max_retry_attempts=int(os.getenv('MAX_RETRY_ATTEMPTS', self.OPTIONAL_ENV_VARS['MAX_RETRY_ATTEMPTS'])),
-            retry_delay_seconds=float(os.getenv('RETRY_DELAY_SECONDS', self.OPTIONAL_ENV_VARS['RETRY_DELAY_SECONDS'])),
-            default_position_size=float(os.getenv('DEFAULT_POSITION_SIZE', self.OPTIONAL_ENV_VARS['DEFAULT_POSITION_SIZE'])),
-            max_position_size_percent=float(os.getenv('MAX_POSITION_SIZE_PERCENT', self.OPTIONAL_ENV_VARS['MAX_POSITION_SIZE_PERCENT'])),
-            max_daily_loss_percent=float(os.getenv('MAX_DAILY_LOSS_PERCENT', self.OPTIONAL_ENV_VARS['MAX_DAILY_LOSS_PERCENT'])),
-            max_single_asset_allocation=float(os.getenv('MAX_SINGLE_ASSET_ALLOCATION', self.OPTIONAL_ENV_VARS['MAX_SINGLE_ASSET_ALLOCATION'])),
-            paper_trading=os.getenv('PAPER_TRADING', self.OPTIONAL_ENV_VARS['PAPER_TRADING']).lower() == 'true',
-            paper_trading_capital=float(os.getenv('PAPER_TRADING_CAPITAL', self.OPTIONAL_ENV_VARS['PAPER_TRADING_CAPITAL']))
-        )
+        # Alpaca configuration
+        alpaca_config = file_config.get('alpaca', {})
+        self.alpaca.api_key = os.getenv('ALPACA_API_KEY', alpaca_config.get('api_key', ''))
+        self.alpaca.secret_key = os.getenv('ALPACA_SECRET_KEY', alpaca_config.get('secret_key', ''))
+        self.alpaca.base_url = os.getenv('ALPACA_BASE_URL', alpaca_config.get('base_url', self.alpaca.base_url))
+        self.alpaca.data_url = os.getenv('ALPACA_DATA_URL', alpaca_config.get('data_url', self.alpaca.data_url))
         
-        # Convenience properties
-        self.paper_trading = self.transaction_config.paper_trading
-        self.paper_trading_capital = self.transaction_config.paper_trading_capital
-        # Simulation controls
-        self.simulate_immediate_fill = os.getenv('SIMULATE_IMMEDIATE_FILL', 'false').lower() == 'true'
+        # Security configuration
+        security_config = file_config.get('security', {})
+        self.security.api_rate_limit = int(os.getenv('API_RATE_LIMIT', security_config.get('api_rate_limit', self.security.api_rate_limit)))
+        cors_origins = os.getenv('CORS_ORIGINS', ','.join(security_config.get('cors_origins', self.security.cors_origins)))
+        self.security.cors_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
         
-        # Optional configurations
-        self.telegram_bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-        self.telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
-        self.telegram_allowed_users = os.getenv('TELEGRAM_ALLOWED_USERS', '').split(',') if os.getenv('TELEGRAM_ALLOWED_USERS') else []
+        # Monitoring configuration
+        monitoring_config = file_config.get('monitoring', {})
+        self.monitoring.price_poll_interval = int(os.getenv('PRICE_POLL_INTERVAL', monitoring_config.get('price_poll_interval', self.monitoring.price_poll_interval)))
+        self.monitoring.log_level = os.getenv('LOG_LEVEL', monitoring_config.get('log_level', self.monitoring.log_level))
+        self.monitoring.log_to_db = os.getenv('LOG_TO_DB', str(monitoring_config.get('log_to_db', self.monitoring.log_to_db))).lower() == 'true'
     
-    def _setup_logging(self) -> None:
-        """Setup structured logging configuration."""
+    def _validate_configuration(self):
+        """Validate critical configuration."""
+        errors = []
         
-        # Convert log level string to logging constant
-        numeric_level = getattr(logging, self.log_level.upper(), logging.INFO)
+        # Check required Alpaca credentials for non-testing environments
+        if self.environment not in ['testing', 'development'] and not self.alpaca.is_configured:
+            errors.append("Alpaca API credentials are required (ALPACA_API_KEY, ALPACA_SECRET_KEY)")
         
-        # Create log directory if it doesn't exist
-        log_path = Path(self.log_file_path)
-        log_path.parent.mkdir(parents=True, exist_ok=True)
+        # Validate database connection parameters (more flexible for development)
+        if not self.database.host:
+            errors.append("Database host is required")
+        
+        # For development, provide sensible defaults
+        if self.environment == 'development':
+            if not self.database.user:
+                import os
+                self.database.user = os.getenv('USER', 'postgres')
+            if not self.database.password:
+                self.database.password = ''  # Allow empty password for local dev
+        else:
+            # For production, require all parameters
+            if not all([self.database.host, self.database.user, self.database.password]):
+                errors.append("Database connection parameters are incomplete (host, user, password required)")
+        
+        # Validate trading parameters
+        if self.trading.max_position_size_percent <= 0 or self.trading.max_position_size_percent > 100:
+            errors.append("max_position_size_percent must be between 0 and 100")
+        
+        if errors:
+            raise ValueError(f"Configuration validation failed: {'; '.join(errors)}")
+    
+    def _setup_logging(self):
+        """Setup logging configuration."""
+        import logging
+        
+        # Set log level
+        numeric_level = getattr(logging, self.monitoring.log_level.upper(), logging.INFO)
         
         # Create formatter
         formatter = logging.Formatter(
@@ -177,137 +219,91 @@ class BrainConfig:
         console_handler.setFormatter(formatter)
         console_handler.setLevel(numeric_level)
         
-        # Optional: DB handler
-        db_handler = None
-        try:
-            if os.getenv('LOG_TO_DB', self.OPTIONAL_ENV_VARS.get('LOG_TO_DB', 'true')).lower() == 'true':
-                from logging import Handler
-                from ..database.connection import DatabaseManager
-                class DatabaseLogHandler(Handler):
-                    def __init__(self, cfg: 'BrainConfig'):
-                        super().__init__()
-                        self.db = DatabaseManager(cfg)
-                        # Ensure logs table exists
-                        self.db.create_tables()
-                    def emit(self, record: logging.LogRecord) -> None:
-                        try:
-                            msg = self.format(record)
-                            query = (
-                                f"INSERT INTO {self.db.config.db_schema}.app_logs "
-                                f"(level, logger_name, message, pathname, func_name, lineno, process, thread_name, extra) "
-                                f"VALUES (%(level)s, %(logger_name)s, %(message)s, %(pathname)s, %(func_name)s, %(lineno)s, %(process)s, %(thread_name)s, %(extra)s)"
-                            )
-                            params = {
-                                'level': record.levelname,
-                                'logger_name': record.name,
-                                'message': msg,
-                                'pathname': getattr(record, 'pathname', None),
-                                'func_name': getattr(record, 'funcName', None),
-                                'lineno': getattr(record, 'lineno', None),
-                                'process': getattr(record, 'process', None),
-                                'thread_name': getattr(record, 'threadName', None),
-                                'extra': None
-                            }
-                            self.db.execute_action(query, params)
-                        except Exception:
-                            pass
-                db_handler = DatabaseLogHandler(self)
-                db_handler.setFormatter(formatter)
-                db_handler.setLevel(numeric_level)
-        except Exception as e:
-            # Fallback silently if DB logging fails
-            pass
-        
         # Setup root logger
         root_logger = logging.getLogger()
         root_logger.setLevel(numeric_level)
-        
-        # Clear existing handlers to avoid duplicates
         root_logger.handlers.clear()
-        
         root_logger.addHandler(console_handler)
-        # Only write to file if LOG_TO_DB is false
-        if os.getenv('LOG_TO_DB', self.OPTIONAL_ENV_VARS.get('LOG_TO_DB', 'true')).lower() != 'true':
-            file_handler = logging.FileHandler(log_path)
+        
+        # Optional file handler
+        if self.monitoring.log_to_file:
+            log_dir = Path("logs")
+            log_dir.mkdir(exist_ok=True)
+            file_handler = logging.FileHandler(log_dir / f"braintransactions_{self.environment}.log")
             file_handler.setFormatter(formatter)
             file_handler.setLevel(numeric_level)
             root_logger.addHandler(file_handler)
-        if db_handler:
-            root_logger.addHandler(db_handler)
         
         # Suppress noisy loggers
         logging.getLogger('urllib3').setLevel(logging.WARNING)
         logging.getLogger('requests').setLevel(logging.WARNING)
         logging.getLogger('psycopg2').setLevel(logging.WARNING)
-        logging.getLogger('alpaca_trade_api').setLevel(logging.WARNING)
-    
-    def get_alpaca_credentials(self) -> Dict[str, str]:
-        """Get Alpaca API credentials."""
-        return {
-            'api_key': self.alpaca_api_key,
-            'secret_key': self.alpaca_secret_key,
-            'base_url': self.alpaca_base_url,
-            'data_url': self.alpaca_data_url
-        }
-    
-    def get_database_config(self) -> Dict[str, Any]:
-        """Get database configuration."""
-        return {
-            'host': self.db_host,
-            'port': self.db_port,
-            'database': self.db_name,
-            'user': self.db_user,
-            'password': self.db_password,
-            'schema': self.db_schema,
-            'url': self.db_url
-        }
-    
-    def get_telegram_config(self) -> Dict[str, Any]:
-        """Get Telegram configuration."""
-        return {
-            'bot_token': self.telegram_bot_token,
-            'chat_id': self.telegram_chat_id,
-            'allowed_users': self.telegram_allowed_users,
-            'enabled': bool(self.telegram_bot_token and self.telegram_chat_id)
-        }
     
     def get_system_status(self) -> Dict[str, Any]:
         """Get current system configuration status."""
         return {
-            'paper_trading': self.paper_trading,
-            'alpaca_configured': bool(self.alpaca_api_key and self.alpaca_secret_key),
-            'database_configured': bool(self.db_host and self.db_user and self.db_password),
-            'telegram_configured': bool(self.telegram_bot_token and self.telegram_chat_id),
-            'log_level': self.log_level,
-            'timestamp': datetime.now().isoformat(),
-            'transaction_config': {
-                'kill_switch_timeout': self.transaction_config.kill_switch_timeout,
-                'max_retry_attempts': self.transaction_config.max_retry_attempts,
-                'paper_trading_capital': self.transaction_config.paper_trading_capital,
-                'max_position_size_percent': self.transaction_config.max_position_size_percent
-            }
+            'environment': self.environment,
+            'config_file': self.config_file,
+            'database_configured': bool(self.database.host and self.database.user),
+            'alpaca_configured': self.alpaca.is_configured,
+            'paper_trading': self.trading.paper_trading,
+            'timestamp': datetime.now().isoformat()
         }
     
-    def validate_alpaca_credentials(self) -> bool:
-        """Validate Alpaca API credentials."""
-        try:
-            import alpaca_trade_api as tradeapi
-            
-            api = tradeapi.REST(
-                self.alpaca_api_key,
-                self.alpaca_secret_key,
-                self.alpaca_base_url,
-                api_version='v2'
-            )
-            
-            # Test API connection
-            account = api.get_account()
-            logger.info(f"✅ Alpaca credentials validated - Account status: {account.status}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ Alpaca credentials validation failed: {str(e)}")
-            return False
+    def create_config_template(self, output_file: str):
+        """Create a configuration template file."""
+        template = {
+            'database': {
+                'host': 'localhost',
+                'port': 5432,
+                'name': 'braintransactions',
+                'user': 'brain_user',
+                'password': 'brain_password',
+                'schema': 'laxmiyantra',
+                'pool_size': 10
+            },
+            'trading': {
+                'paper_trading': True,
+                'paper_trading_capital': 100000.0,
+                'max_position_size_percent': 10.0,
+                'max_daily_loss_percent': 5.0
+            },
+            'alpaca': {
+                'api_key': '${ALPACA_API_KEY}',
+                'secret_key': '${ALPACA_SECRET_KEY}',
+                'base_url': 'https://paper-api.alpaca.markets'
+            },
+            'security': {
+                'api_rate_limit': 1000,
+                'cors_origins': ['http://localhost:3000']
+            },
+            'monitoring': {
+                'price_poll_interval': 60,
+                'log_level': 'INFO',
+                'log_to_db': False
+            }
+        }
+        
+        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+        with open(output_file, 'w') as f:
+            yaml.dump(template, f, default_flow_style=False, indent=2)
+
 
 # Global configuration instance
-config = BrainConfig()
+config: Optional[BrainConfig] = None
+
+def get_config(environment: str = None) -> BrainConfig:
+    """Get global configuration instance."""
+    global config
+    if config is None:
+        env = environment or os.getenv('ENVIRONMENT', 'development')
+        config = BrainConfig(environment=env)
+    return config
+
+
+def init_config(config_file: str = None, environment: str = None) -> BrainConfig:
+    """Initialize global configuration."""
+    global config
+    env = environment or os.getenv('ENVIRONMENT', 'development')
+    config = BrainConfig(config_file=config_file, environment=env)
+    return config

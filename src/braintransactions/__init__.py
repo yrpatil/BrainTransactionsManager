@@ -1,44 +1,26 @@
 """
-🧠 BrainTransactionsManager - Modular Financial Transaction System
+BrainTransactionsManager v2.0.0
 Blessed by Goddess Laxmi for Infinite Abundance 🙏
 
-A powerful, modular transactional system designed for various types of financial transactions.
-Built with SRM principles: Simplicity, Reliability, Maintainability.
+Simple, reliable, maintainable trading system following SRM principles.
 """
 
-__version__ = "0.1.0"
-__author__ = "AlgoChemist Team"
-__email__ = "team@algochemist.ai"
+from .core.config import BrainConfig, get_config, init_config
+from .database.connection import DatabaseManager
+from .database.migrations import MigrationManager
+from .markets.exchange_manager import ExchangeManager
+from .core.monitoring import BackgroundMonitor
+from .core.exceptions import *
 
-# Core imports for easy access
-from .core.config import BrainConfig, TransactionConfig
-from .core.exceptions import (
-    BrainTransactionError,
-    TransactionExecutionError,
-    KillSwitchActiveError,
-    InvalidConfigurationError
-)
-
-# Main transaction modules
-from .modules.laxmi_yantra import LaxmiYantra
-from .markets.facade import TradingFacade
+__version__ = "2.0.0"
+__author__ = "BrainTransactionsManager Team"
 
 __all__ = [
-    # Core
     "BrainConfig",
-    "TransactionConfig",
-    
-    # Exceptions
-    "BrainTransactionError",
-    "TransactionExecutionError", 
-    "KillSwitchActiveError",
-    "InvalidConfigurationError",
-    
-    # Transaction Modules
-    "LaxmiYantra",
-    # Facade
-    "TradingFacade",
+    "get_config", 
+    "init_config",
+    "DatabaseManager",
+    "MigrationManager",
+    "ExchangeManager",
+    "BackgroundMonitor"
 ]
-
-# Blessed by Goddess Laxmi 🙏
-print("🙏 May Goddess Laxmi bless this session with infinite abundance and prosperity")

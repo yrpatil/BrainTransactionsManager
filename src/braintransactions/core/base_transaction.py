@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 from .kill_switch import KillSwitchMixin
 from .config import BrainConfig
-from .exceptions import TransactionExecutionError, InvalidConfigurationError
+from .exceptions import TradingError, ConfigurationError
 
 logger = logging.getLogger(__name__)
 
@@ -61,14 +61,14 @@ class BaseTransactionManager(KillSwitchMixin, ABC):
         try:
             # Check basic configuration
             if not self.config:
-                raise InvalidConfigurationError("Configuration object is required")
+                raise ConfigurationError("Configuration object is required")
             
             # Module-specific validation
             self._validate_module_configuration()
             
         except Exception as e:
             logger.error(f"Configuration validation failed: {str(e)}")
-            raise InvalidConfigurationError(f"Invalid configuration for {self.module_name}: {str(e)}")
+            raise ConfigurationError(f"Invalid configuration for {self.module_name}: {str(e)}")
     
     @abstractmethod
     def _validate_module_configuration(self) -> None:

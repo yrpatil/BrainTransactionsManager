@@ -8,7 +8,7 @@ Provides emergency shutdown capabilities for all transaction modules.
 import logging
 from typing import Optional, Dict, Any
 from datetime import datetime
-from .exceptions import KillSwitchActiveError
+from .exceptions import KillSwitchError
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +131,7 @@ class KillSwitchMixin:
         if self._kill_switch_active:
             message = f"{operation.capitalize()} blocked - kill switch active: {self._kill_switch_reason}"
             logger.warning(message)
-            raise KillSwitchActiveError(message, operation)
+            raise KillSwitchError(message)
     
     def emergency_stop(self, reason: str = "Emergency stop", 
                       stopped_by: Optional[str] = None) -> bool:

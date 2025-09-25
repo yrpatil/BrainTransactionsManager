@@ -48,7 +48,12 @@ class APIDocsGenerator:
         try:
             app = self.build_version_app(version)
             if app is not None:
-                endpoints = self.introspect_fastapi_routes(version, app)
+                # Prefer OpenAPI-based extraction for accuracy
+                openapi_routes = self.introspect_openapi_routes(app)
+                if openapi_routes:
+                    endpoints = {"http_routes": openapi_routes}
+                else:
+                    endpoints = self.introspect_fastapi_routes(version, app)
         except Exception as e:
             logger.warning(f"FastAPI route introspection failed: {e}")
         
@@ -145,6 +150,36 @@ class APIDocsGenerator:
         except Exception as e:
             logger.warning(f"Route introspection failed: {e}")
             return self.get_default_endpoints(version)
+
+    def introspect_openapi_routes(self, app) -> List[Dict[str, Any]]:
+        """Extract routes from app.openapi() with methods, params, and summaries."""
+        try:
+            schema = app.openapi()
+            paths = schema.get("paths", {})
+            routes: List[Dict[str, Any]] = []
+            for path, methods in paths.items():
+                for method, meta in methods.items():
+                    if method.lower() not in ("get", "post", "put", "patch", "delete"):
+                        continue
+                    params = []
+                    for p in meta.get("parameters", []) or []:
+                        name = p.get("name")
+                        where = p.get("in")
+                        required = p.get("required", False)
+                        params.append({"name": name, "in": where, "required": required})
+                    routes.append({
+                        "path": path,
+                        "method": method.upper(),
+                        "summary": meta.get("summary") or meta.get("operationId") or "",
+                        "description": meta.get("description") or "",
+                        "parameters": params
+                    })
+            # Sort for stable docs
+            routes.sort(key=lambda r: (r["path"], r["method"]))
+            return routes
+        except Exception as e:
+            logger.warning(f"OpenAPI introspection failed: {e}")
+            return []
             
     def extract_endpoints_from_server(self, server_path: Path) -> Dict:
         """Extract endpoints from server module."""
@@ -312,6 +347,26 @@ All endpoints use the pattern: `http://127.0.0.1:8000/{version}/{{endpoint_type}
     def generate_concise_endpoint_documentation(self, version: str, endpoints: Dict) -> str:
         """Generate minimal, precise endpoint docs with usage, params, and sample outputs."""
         sections = ["## 📋 Endpoints (Concise)\n"]
+        # If HTTP routes present (v2-style), document them directly
+        http_routes = endpoints.get("http_routes")
+        if http_routes:
+            for r in http_routes:
+                path = r["path"]
+                method = r["method"]
+                desc = r.get("summary") or r.get("description") or ""
+                params_list = []
+                for p in r.get("parameters") or []:
+                    req = "required" if p.get("required") else "optional"
+                    params_list.append(f"{p.get('name')} ({p.get('in')}, {req})")
+                params_str = ", ".join(params_list) if params_list else "None"
+                curl = f"curl -s -X {method} http://127.0.0.1:8000{path}"
+                # Special-case market data example for clarity
+                if path == "/market/data" and method == "GET":
+                    curl = "curl -s 'http://127.0.0.1:8000/market/data?symbol=BTC/USD'"
+                sections.append(
+                    f"### {method} {path}\n- **description**: {desc}\n- **params**: {params_str}\n\n```bash\n{curl}\n```\n"
+                )
+            return "\n".join(sections)
         # Build from introspected routes if available
         def add_endpoint(title: str, method: str, path: str, desc: str, params: Optional[List[str]] = None, example_override: Optional[str] = None):
             params_str = ", ".join(params) if params else "None"
