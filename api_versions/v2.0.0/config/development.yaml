@@ -1,0 +1,46 @@
+# BrainTransactionsManager v2.0.0 - Development Configuration
+# Blessed by Goddess Laxmi for Infinite Abundance 🙏
+
+database:
+  host: localhost
+  port: 5432
+  name: braintransactions
+  user: ${DB_USER}  # Will use current user if not set
+  password: ${DB_PASSWORD}  # Can be empty for local development
+  schema: laxmiyantra
+  pool_size: 5
+  connection_timeout: 30
+
+trading:
+  paper_trading: true
+  paper_trading_capital: 100000.0
+  default_position_size: 100.0
+  max_position_size_percent: 10.0
+  max_daily_loss_percent: 5.0
+  max_single_asset_allocation: 25.0
+  kill_switch_timeout: 30
+  max_retry_attempts: 3
+  retry_delay_seconds: 1.0
+
+alpaca:
+  api_key: ${ALPACA_API_KEY:}  # Optional for development
+  secret_key: ${ALPACA_SECRET_KEY:}  # Optional for development
+  base_url: https://paper-api.alpaca.markets
+  data_url: https://data.alpaca.markets/v2
+
+security:
+  api_rate_limit: 1000
+  cors_origins:
+    - http://localhost:3000
+    - http://localhost:8080
+  session_timeout: 3600
+  max_login_attempts: 5
+
+monitoring:
+  price_poll_interval: 60
+  portfolio_sync_interval: 300
+  order_reconcile_interval: 30
+  health_check_interval: 30
+  log_level: DEBUG
+  log_to_file: true
+  log_to_db: false

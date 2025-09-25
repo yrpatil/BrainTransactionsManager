@@ -1,0 +1,46 @@
+# BrainTransactionsManager v2.0.0 - Production Configuration
+# Blessed by Goddess Laxmi for Infinite Abundance 🙏
+
+database:
+  host: ${DB_HOST}
+  port: ${DB_PORT:5432}
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+  schema: ${DB_SCHEMA:laxmiyantra}
+  pool_size: ${DB_POOL_SIZE:20}
+  connection_timeout: ${DB_CONNECTION_TIMEOUT:30}
+
+trading:
+  paper_trading: ${PAPER_TRADING:false}
+  paper_trading_capital: ${PAPER_TRADING_CAPITAL:100000.0}
+  default_position_size: ${DEFAULT_POSITION_SIZE:100.0}
+  max_position_size_percent: ${MAX_POSITION_SIZE_PERCENT:5.0}
+  max_daily_loss_percent: ${MAX_DAILY_LOSS_PERCENT:2.0}
+  max_single_asset_allocation: ${MAX_SINGLE_ASSET_ALLOCATION:15.0}
+  kill_switch_timeout: ${KILL_SWITCH_TIMEOUT:30}
+  max_retry_attempts: ${MAX_RETRY_ATTEMPTS:3}
+  retry_delay_seconds: ${RETRY_DELAY_SECONDS:1.0}
+
+alpaca:
+  api_key: ${ALPACA_API_KEY}
+  secret_key: ${ALPACA_SECRET_KEY}
+  base_url: ${ALPACA_BASE_URL:https://api.alpaca.markets}
+  data_url: ${ALPACA_DATA_URL:https://data.alpaca.markets/v2}
+
+security:
+  api_rate_limit: ${API_RATE_LIMIT:5000}
+  cors_origins:
+    - ${CORS_ORIGIN_1:https://yourdomain.com}
+    - ${CORS_ORIGIN_2:https://app.yourdomain.com}
+  session_timeout: ${SESSION_TIMEOUT:1800}
+  max_login_attempts: ${MAX_LOGIN_ATTEMPTS:3}
+
+monitoring:
+  price_poll_interval: ${PRICE_POLL_INTERVAL:30}
+  portfolio_sync_interval: ${PORTFOLIO_SYNC_INTERVAL:120}
+  order_reconcile_interval: ${ORDER_RECONCILE_INTERVAL:15}
+  health_check_interval: ${HEALTH_CHECK_INTERVAL:60}
+  log_level: ${LOG_LEVEL:INFO}
+  log_to_file: ${LOG_TO_FILE:true}
+  log_to_db: ${LOG_TO_DB:true}
