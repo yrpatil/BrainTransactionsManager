@@ -16,7 +16,8 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 # Import v2.0.0 components
@@ -25,6 +26,9 @@ from src.braintransactions import (
     DatabaseManager, MigrationManager,
     ExchangeManager, BackgroundMonitor
 )
+
+# Import dashboard components
+from src.braintransactions.reports.reporting_service import ReportingService
 
 # Import sophisticated logging
 from src.braintransactions.core.logging_config import setup_logging, get_logger
@@ -238,6 +242,12 @@ async def setup_cors():
         )
 
 
+# Mount static files for dashboard
+dashboard_static_path = Path("src/braintransactions/reports/dashboard/static")
+if dashboard_static_path.exists():
+    app.mount("/dashboard/static", StaticFiles(directory=str(dashboard_static_path)), name="dashboard_static")
+
+
 # Dependency to get current config
 def get_current_config() -> BrainConfig:
     """Dependency to get current configuration."""
@@ -295,6 +305,54 @@ async def detailed_health_check():
 async def config_status(config: BrainConfig = Depends(get_current_config)):
     """Get configuration status."""
     return config.get_system_status()
+
+
+# Dashboard endpoints
+@app.get("/dashboard/data")
+async def get_dashboard_data(config: BrainConfig = Depends(get_current_config)):
+    """Get all dashboard data in single API call.
+    
+    Returns comprehensive trading analytics including KPIs, strategy performance,
+    and detailed performance metrics for the Laxmi-yantra dashboard.
+    """
+    try:
+        logger.info("Fetching dashboard data")
+        
+        # Initialize reporting service
+        reporting = ReportingService(config)
+        
+        # Get comprehensive dashboard data
+        data = reporting.get_dashboard_data()
+        
+        return {
+            "success": True,
+            "data": data,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Dashboard data error: {e}")
+        return {
+            "success": False,
+            "error": "Failed to fetch dashboard data",
+            "details": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+
+@app.get("/dashboard")
+async def serve_dashboard():
+    """Serve the main Laxmi-yantra dashboard HTML page."""
+    try:
+        dashboard_path = Path("src/braintransactions/reports/dashboard/index.html")
+        if not dashboard_path.exists():
+            raise HTTPException(status_code=404, detail="Dashboard not found")
+        
+        return FileResponse(dashboard_path)
+        
+    except Exception as e:
+        logger.error(f"Dashboard serve error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to serve dashboard")
 
 
 # Trading endpoints
