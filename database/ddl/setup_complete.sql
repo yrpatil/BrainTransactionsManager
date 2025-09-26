@@ -178,6 +178,15 @@ ON laxmiyantra.order_history(strategy_name, ticker);
 CREATE INDEX IF NOT EXISTS idx_order_side_status 
 ON laxmiyantra.order_history(side, status);
 
+-- Optimized composite index for reporting (strategy, status, submitted_at desc)
+CREATE INDEX IF NOT EXISTS idx_order_strategy_status_submitted_at 
+ON laxmiyantra.order_history(strategy_name, status, submitted_at DESC);
+
+-- Partial index to speed up filled-order analytics in last 90 days
+CREATE INDEX IF NOT EXISTS idx_order_filled_recent_submitted_at 
+ON laxmiyantra.order_history(submitted_at DESC)
+WHERE status = 'filled' AND submitted_at >= NOW() - INTERVAL '90 days';
+
 -- Transaction Log Indexes
 CREATE INDEX IF NOT EXISTS idx_transaction_module 
 ON laxmiyantra.transaction_log(module_name);

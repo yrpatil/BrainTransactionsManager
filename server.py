@@ -16,7 +16,8 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 import time
 
@@ -29,6 +30,9 @@ from src.braintransactions import (
 
 # Import sophisticated logging
 from src.braintransactions.core.logging_config import setup_logging, get_logger
+
+# Import reporting service for dashboard
+from src.braintransactions.reports.reporting_service import ReportingService
 
 # Setup logging system
 system_logger = setup_logging(
@@ -261,6 +265,12 @@ async def setup_cors():
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+
+# Mount static files for dashboard
+dashboard_static_path = Path("src/braintransactions/reports/dashboard/static")
+if dashboard_static_path.exists():
+    app.mount("/dashboard/static", StaticFiles(directory=str(dashboard_static_path)), name="dashboard_static")
 
 
 # Dependency to get current config
@@ -687,6 +697,54 @@ async def run_migrations():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Dashboard endpoints
+@app.get("/dashboard/data")
+async def get_dashboard_data(config: BrainConfig = Depends(get_current_config)):
+    """Get all dashboard data in single API call.
+    
+    Returns comprehensive trading analytics including KPIs, strategy performance,
+    and detailed performance metrics for the Laxmi-yantra dashboard.
+    """
+    try:
+        logger.info("Fetching dashboard data")
+        
+        # Initialize reporting service
+        reporting = ReportingService(config)
+        
+        # Get comprehensive dashboard data
+        data = reporting.get_dashboard_data()
+        
+        return {
+            "success": True,
+            "data": data,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Dashboard data error: {e}")
+        return {
+            "success": False,
+            "error": "Failed to fetch dashboard data",
+            "details": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+
+@app.get("/dashboard")
+async def serve_dashboard():
+    """Serve the main Laxmi-yantra dashboard HTML page."""
+    try:
+        dashboard_path = Path("src/braintransactions/reports/dashboard/index.html")
+        if not dashboard_path.exists():
+            raise HTTPException(status_code=404, detail="Dashboard not found")
+        
+        return FileResponse(dashboard_path)
+        
+    except Exception as e:
+        logger.error(f"Dashboard serve error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to serve dashboard")
+
+
 # Additional portfolio endpoints
 @app.get("/portfolio/summary")
 async def get_portfolio_summary(
@@ -990,6 +1048,86 @@ async def close_all_positions(
         
     except Exception as e:
         logger.error(f"Close all positions error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Manual sync endpoint for order reconciliation
+@app.post("/admin/sync-orders", tags=["admin"])
+async def manual_order_sync():
+    """
+    Manual order synchronization for fixing stuck pending orders.
+    
+    This endpoint triggers immediate order reconciliation with Alpaca.
+    Use when orders are stuck in pending state despite being filled.
+    """
+    try:
+        if not background_monitor:
+            raise HTTPException(status_code=503, detail="Background monitor not available")
+        
+        logger.info("🔄 Manual order sync triggered")
+        
+        # Get current pending orders count
+        pending_orders = await background_monitor._get_pending_orders()
+        initial_count = len(pending_orders)
+        
+        # Force reconciliation
+        await background_monitor._reconcile_orders()
+        
+        # Get updated pending orders count
+        updated_pending_orders = await background_monitor._get_pending_orders()
+        final_count = len(updated_pending_orders)
+        
+        reconciled = initial_count - final_count
+        
+        result = {
+            "success": True,
+            "message": "Manual order sync completed",
+            "initial_pending_orders": initial_count,
+            "final_pending_orders": final_count,
+            "orders_reconciled": reconciled,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        logger.info(f"✅ Manual sync complete: {reconciled} orders reconciled")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Manual order sync error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/admin/pending-orders", tags=["admin"])
+async def get_pending_orders():
+    """
+    Get current pending orders for monitoring.
+    
+    Returns list of orders that are still in pending state in database.
+    """
+    try:
+        if not background_monitor:
+            raise HTTPException(status_code=503, detail="Background monitor not available")
+        
+        pending_orders = await background_monitor._get_pending_orders()
+        
+        return {
+            "success": True,
+            "pending_orders_count": len(pending_orders),
+            "pending_orders": [
+                {
+                    "order_id": order.get("order_id"),
+                    "ticker": order.get("ticker"),
+                    "status": order.get("status"),
+                    "submitted_at": order.get("submitted_at"),
+                    "side": order.get("side"),
+                    "quantity": order.get("quantity")
+                }
+                for order in pending_orders
+            ],
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Get pending orders error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

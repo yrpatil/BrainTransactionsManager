@@ -157,11 +157,16 @@ class BackgroundMonitor:
         self.start_time = datetime.now()
         
         logger.info("🔄 Starting background monitoring system...")
+        logger.info(f"📋 Registered tasks: {len(self.tasks)} ({', '.join(self.tasks.keys())})")
+        
+        # Log task intervals for visibility
+        for task_name, task in self.tasks.items():
+            logger.info(f"⏰ {task_name}: every {task.interval_seconds}s")
         
         # Start monitoring loop
         self.monitor_loop_task = asyncio.create_task(self._monitoring_loop())
         
-        logger.info("✅ Background monitoring started")
+        logger.info("✅ Background monitoring started - order reconciliation and portfolio sync active")
     
     async def stop(self):
         """Stop background monitoring."""
@@ -294,8 +299,14 @@ class BackgroundMonitor:
                     await self._remove_position(db_pos['ticker'])
                     reconciled_count += 1
             
-            if reconciled_count > 0:
-                logger.info(f"✅ Portfolio sync: reconciled {reconciled_count} positions")
+            # Always log portfolio sync summary
+            total_exchange_positions = len(exchange_positions)
+            total_db_positions = len(db_positions)
+            
+            if reconciled_count == 0:
+                logger.info(f"✅ Portfolio sync: {total_exchange_positions} positions in sync")
+            else:
+                logger.info(f"📊 Portfolio sync complete: {reconciled_count} positions reconciled (Exchange: {total_exchange_positions}, DB: {total_db_positions})")
             
         except Exception as e:
             logger.error(f"Portfolio sync task error: {e}")
@@ -307,22 +318,54 @@ class BackgroundMonitor:
             # Get pending orders from database
             pending_orders = await self._get_pending_orders()
             
+            # Enhanced logging for visibility
+            total_pending = len(pending_orders)
+            logger.info(f"🔄 Order reconciliation: checking {total_pending} pending orders")
+            
             reconciled_count = 0
+            failed_count = 0
+            
             for order in pending_orders:
+                order_id = order.get('order_id', 'unknown')
+                db_status = order.get('status', 'unknown')
+                
                 try:
                     # Get current status from exchange
-                    current_status = await self.exchange_manager.get_order_status(order['order_id'])
+                    current_status = await self.exchange_manager.get_order_status(order_id)
+                    exchange_status = current_status.get('status', 'unknown')
+                    
+                    logger.debug(f"Order {order_id}: DB={db_status}, Exchange={exchange_status}")
                     
                     # Update if status changed
-                    if current_status['status'] != order['status']:
-                        await self._update_order_status(order['order_id'], current_status)
+                    if exchange_status != db_status:
+                        await self._update_order_status(order_id, current_status)
                         reconciled_count += 1
+                        logger.info(f"✅ Updated order {order_id}: {db_status} → {exchange_status}")
                         
                 except Exception as e:
-                    logger.warning(f"Failed to reconcile order {order['order_id']}: {e}")
+                    failed_count += 1
+                    logger.warning(f"❌ Failed to reconcile order {order_id}: {str(e)}")
             
-            if reconciled_count > 0:
-                logger.info(f"✅ Order reconciliation: updated {reconciled_count} orders")
+            # Summary logging - always log for visibility
+            unchanged_count = total_pending - reconciled_count - failed_count
+            
+            if total_pending == 0:
+                logger.info("✅ Order reconciliation: No pending orders found")
+            else:
+                logger.info(f"📊 Order reconciliation complete: {total_pending} checked → {reconciled_count} updated, {failed_count} failed, {unchanged_count} unchanged")
+            
+            # Alert if many orders are stuck
+            if total_pending > 10:
+                logger.warning(f"⚠️ High number of pending orders detected: {total_pending}")
+            
+            # Store reconciliation metrics for monitoring
+            await self._store_reconciliation_metrics({
+                'total_pending': total_pending,
+                'reconciled': reconciled_count,
+                'failed': failed_count,
+                'unchanged': unchanged_count,
+                'timestamp': datetime.now()
+            })
             
         except Exception as e:
             logger.error(f"Order reconciliation task error: {e}")
@@ -452,13 +495,14 @@ class BackgroundMonitor:
         )
     
     async def _update_order_status(self, order_id: str, status_data: Dict[str, Any]):
-        """Update order status in database."""
+        """Update order status in database with verification."""
         query = f"""
         UPDATE {self.config.database.schema}.order_history 
         SET status = %(status)s,
             filled_quantity = %(filled_quantity)s,
             filled_avg_price = %(filled_avg_price)s,
-            filled_at = %(filled_at)s
+            filled_at = %(filled_at)s,
+            updated_at = CURRENT_TIMESTAMP
         WHERE order_id = %(order_id)s
         """
         
@@ -470,15 +514,48 @@ class BackgroundMonitor:
             'filled_at': status_data.get('filled_at')
         }
         
-        await asyncio.get_event_loop().run_in_executor(
-            None, lambda: self.database_manager.execute_action(query, params)
-        )
+        try:
+            # Execute update
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: self.database_manager.execute_action(query, params)
+            )
+            
+            # Verify update succeeded
+            verify_query = f"""
+            SELECT status FROM {self.config.database.schema}.order_history 
+            WHERE order_id = %(order_id)s
+            """
+            
+            updated_status = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: self.database_manager.execute_single(verify_query, {'order_id': order_id})
+            )
+            
+            if updated_status and updated_status.get('status') == status_data.get('status'):
+                logger.debug(f"✅ Database update verified for order {order_id}")
+            else:
+                logger.error(f"❌ Database update verification failed for order {order_id}")
+                raise Exception(f"Database update verification failed")
+                
+        except Exception as e:
+            logger.error(f"Failed to update order {order_id} in database: {e}")
+            raise
     
     async def _store_kpis(self, kpis: Dict[str, Any]):
         """Store KPIs in database."""
         # This could be expanded to store in a dedicated KPIs table
         # For now, we'll update system status
         await self._update_system_status('kpis', True, f"Portfolio: ${kpis['portfolio_value']:.2f}")
+    
+    async def _store_reconciliation_metrics(self, metrics: Dict[str, Any]):
+        """Store reconciliation metrics for monitoring."""
+        try:
+            # Simple status update with reconciliation summary
+            status_message = f"Last run: {metrics['reconciled']} updated, {metrics['failed']} failed, {metrics['total_pending']} pending"
+            await self._update_system_status('order_reconciliation', True, status_message)
+            
+        except Exception as e:
+            logger.debug(f"Failed to store reconciliation metrics: {e}")
+            # Don't raise - this is just for monitoring
     
     async def _update_system_health(self, health_data: Dict[str, Any]):
         """Update system health status."""

@@ -17,7 +17,7 @@ WITH daily_trades AS (
         commission
     FROM order_history
     WHERE status = 'filled'
-        AND submitted_at >= NOW() - INTERVAL '30 days'
+        AND submitted_at >= NOW() - INTERVAL '60 days'
 ),
 daily_volume AS (
     SELECT 
@@ -58,7 +58,7 @@ WITH strategy_stats AS (
         MAX(submitted_at) as last_trade,
         COUNT(DISTINCT ticker) as unique_tickers
     FROM order_history
-    WHERE submitted_at >= NOW() - INTERVAL '30 days'
+    WHERE submitted_at >= NOW() - INTERVAL '60 days'
     GROUP BY strategy_name
 )
 SELECT 
@@ -89,7 +89,7 @@ SELECT
     COUNT(DISTINCT strategy_name) as strategies_count,
     MAX(submitted_at) as last_trade_time
 FROM order_history
-WHERE submitted_at >= NOW() - INTERVAL '30 days'
+WHERE submitted_at >= NOW() - INTERVAL '60 days'
 GROUP BY ticker
 HAVING COUNT(*) >= 5  -- Only tickers with at least 5 trades
 ORDER BY total_volume DESC
@@ -106,6 +106,6 @@ SELECT
         ELSE NULL
     END)::numeric, 2) as avg_execution_time
 FROM order_history
-WHERE submitted_at >= NOW() - INTERVAL '7 days'
+WHERE submitted_at >= NOW() - INTERVAL '60 days'
 GROUP BY EXTRACT(HOUR FROM submitted_at)
 ORDER BY hour_of_day;

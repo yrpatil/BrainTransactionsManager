@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🙏 Laxmi-yantra Trading Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* =================================================================
+           LAXMI-YANTRA TRADING DASHBOARD STYLES
+           Blessed by Goddess Laxmi for Infinite Abundance 🙏
+           ================================================================= */
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a2332 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: rgba(15, 20, 25, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #2d3748;
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .refresh-btn:hover {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+        
+        .refresh-btn:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .last-update {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .kpi-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .kpi-card:hover {
+            border-color: #ffd700;
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .kpi-label {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+        
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+        
+        .kpi-positive {
+            color: #22c55e;
+        }
+        
+        .kpi-negative {
+            color: #ef4444;
+        }
+        
+        .kpi-neutral {
+            color: #ffd700;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .chart-card, .table-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #ffd700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+        
+        .strategy-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .strategy-table th,
+        .strategy-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .strategy-table th {
+            background: rgba(51, 65, 85, 0.5);
+            color: #ffd700;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .strategy-table td {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+        }
+        
+        .strategy-table tr:hover {
+            background: rgba(51, 65, 85, 0.3);
+        }
+        
+        .top-tickers {
+            display: grid;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+        
+        .ticker-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 8px;
+            border-left: 4px solid #ffd700;
+        }
+        
+        .ticker-symbol {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #ffd700;
+        }
+        
+        .ticker-volume {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            color: #22c55e;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: #94a3b8;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #334155;
+            border-top: 4px solid #ffd700;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 1rem;
+            color: #fca5a5;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        
+        .no-data {
+            text-align: center;
+            color: #94a3b8;
+            padding: 2rem;
+            font-style: italic;
+        }
+        
+        .blessing {
+            text-align: center;
+            margin: 2rem 0;
+            font-size: 0.9rem;
+            color: #ffd700;
+            font-style: italic;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .header {
+                padding: 1rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .kpi-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .kpi-value {
+                font-size: 1.5rem;
+            }
+            
+            .strategy-table {
+                font-size: 0.8rem;
+            }
+            
+            .strategy-table th,
+            .strategy-table td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>🙏 Laxmi-yantra Trading Dashboard</h1>
+            <div class="header-controls">
+                <button id="refreshBtn" class="refresh-btn">🔄 Refresh</button>
+                <div class="last-update" id="lastUpdate">Loading...</div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- KPI Cards -->
+        <div class="kpi-grid" id="kpiGrid">
+            <div class="kpi-card">
+                <div class="kpi-label">Portfolio Value</div>
+                <div class="kpi-value kpi-neutral" id="portfolioValue">Loading...</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Total Trades (60d)</div>
+                <div class="kpi-value kpi-neutral" id="tradeCount">Loading...</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Total Volume (60d)</div>
+                <div class="kpi-value kpi-neutral" id="totalVolume">Loading...</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Avg Execution Time</div>
+                <div class="kpi-value kpi-neutral" id="avgExecution">Loading...</div>
+            </div>
+        </div>
+        
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid">
+            <!-- Daily P&L Chart -->
+            <div class="chart-card">
+                <div class="card-title">📈 Daily P&L Performance</div>
+                <div class="chart-container">
+                    <canvas id="dailyPnlChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Strategy Performance Table -->
+            <div class="table-card">
+                <div class="card-title">📊 Strategy Performance</div>
+                <div id="strategyTableContainer">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        Loading strategies...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Top Tickers -->
+            <div class="table-card">
+                <div class="card-title">🏆 Top Tickers</div>
+                <div id="topTickersContainer">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        Loading tickers...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hourly Pattern Chart -->
+            <div class="chart-card">
+                <div class="card-title">🕐 Hourly Trading Pattern</div>
+                <div class="chart-container">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Position Performance Table (Full Width) -->
+        <div class="table-card" style="margin-bottom: 2rem;">
+            <div class="card-title">💼 Current Position Performance</div>
+            <div id="positionTableContainer">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    Loading positions...
+                </div>
+            </div>
+        </div>
+        
+        <div class="blessing">
+            May Goddess Laxmi bless this dashboard with infinite clarity and profitable insights! 🙏
+        </div>
+    </div>
+    
+    <script>
+        // =================================================================
+        // LAXMI-YANTRA DASHBOARD JAVASCRIPT
+        // Blessed by Goddess Laxmi for Infinite Abundance 🙏
+        // =================================================================
+        
+        let dailyPnlChart = null;
+        let hourlyChart = null;
+        
+        // Utility functions
+        function formatCurrency(value) {
+            if (value === null || value === undefined || isNaN(value)) return '$0.00';
+            const numValue = parseFloat(value);
+            if (isNaN(numValue)) return '$0.00';
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(numValue);
+        }
+        
+        function formatNumber(value) {
+            if (value === null || value === undefined) return '0';
+            const numValue = parseFloat(value);
+            if (isNaN(numValue)) return '0';
+            return new Intl.NumberFormat('en-US').format(numValue);
+        }
+        
+        function formatPercent(value) {
+            if (value === null || value === undefined) return '0.00%';
+            const numValue = parseFloat(value);
+            if (isNaN(numValue)) return '0.00%';
+            return `${numValue.toFixed(2)}%`;
+        }
+        
+        function formatTime(seconds) {
+            if (seconds === null || seconds === undefined) return 'N/A';
+            const numValue = parseFloat(seconds);
+            if (isNaN(numValue)) return 'N/A';
+            return `${numValue.toFixed(2)}s`;
+        }
+        
+        // Show error message
+        function showError(container, message) {
+            container.innerHTML = `<div class="error-message">⚠️ ${message}</div>`;
+        }
+        
+        // Show no data message
+        function showNoData(container, message = "No data available") {
+            container.innerHTML = `<div class="no-data">${message}</div>`;
+        }
+        
+        // Fetch dashboard data
+        async function fetchDashboardData() {
+            try {
+                const response = await fetch('/dashboard/data');
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to fetch dashboard data');
+                }
+                
+                return result.data;
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+                throw error;
+            }
+        }
+        
+        // Update KPI cards
+        function updateKPICards(kpis) {
+            const portfolioValueEl = document.getElementById('portfolioValue');
+            const tradeCountEl = document.getElementById('tradeCount');
+            const totalVolumeEl = document.getElementById('totalVolume');
+            const avgExecutionEl = document.getElementById('avgExecution');
+            
+            if (!kpis || kpis.length === 0) {
+                portfolioValueEl.textContent = 'No data';
+                tradeCountEl.textContent = 'No data';
+                totalVolumeEl.textContent = 'No data';
+                avgExecutionEl.textContent = 'No data';
+                return;
+            }
+            
+            const kpi = kpis[0]; // Assuming single row result
+            
+            // Portfolio value (handle null gracefully)
+            const portfolioValue = kpi.portfolio_market_value;
+            if (portfolioValue === null || portfolioValue === undefined) {
+                portfolioValueEl.textContent = 'N/A';
+                portfolioValueEl.className = 'kpi-value kpi-neutral';
+            } else {
+                portfolioValueEl.textContent = formatCurrency(portfolioValue);
+                portfolioValueEl.className = `kpi-value ${portfolioValue > 0 ? 'kpi-positive' : 'kpi-neutral'}`;
+            }
+            
+            // Trade count
+            const tradeCount = kpi.trade_count_30d || 0;
+            tradeCountEl.textContent = formatNumber(tradeCount);
+            tradeCountEl.className = `kpi-value ${tradeCount > 0 ? 'kpi-positive' : 'kpi-neutral'}`;
+            
+            // Total volume
+            const totalVolume = kpi.traded_volume_30d || 0;
+            totalVolumeEl.textContent = formatCurrency(totalVolume);
+            totalVolumeEl.className = `kpi-value ${totalVolume > 0 ? 'kpi-positive' : 'kpi-neutral'}`;
+            
+            // Average execution time
+            const avgExecution = kpi.avg_exec_latency_seconds_7d;
+            avgExecutionEl.textContent = formatTime(avgExecution);
+            avgExecutionEl.className = 'kpi-value kpi-neutral';
+        }
+        
+        // Create daily P&L chart
+        function createDailyPnlChart(pnlData) {
+            const ctx = document.getElementById('dailyPnlChart').getContext('2d');
+            
+            if (dailyPnlChart) {
+                dailyPnlChart.destroy();
+            }
+            
+            if (!pnlData || pnlData.length === 0) {
+                ctx.fillStyle = '#94a3b8';
+                ctx.textAlign = 'center';
+                ctx.font = '16px sans-serif';
+                ctx.fillText('No position data available', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+            
+            const labels = pnlData.map(d => new Date(d.price_date).toLocaleDateString());
+            const pnlValues = pnlData.map(d => parseFloat(d.daily_pnl || 0));
+            
+            // Color points based on positive/negative P&L
+            const pointColors = pnlValues.map(value => value >= 0 ? '#22c55e' : '#ef4444');
+            const borderColor = '#ffd700'; // Golden line
+            
+            dailyPnlChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Daily P&L',
+                        data: pnlValues,
+                        borderColor: borderColor,
+                        backgroundColor: pointColors,
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: pointColors,
+                        borderWidth: 3,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        fill: false,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e2e8f0'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const color = value >= 0 ? '🟢' : '🔴';
+                                    return `${color} Daily P&L: ${formatCurrency(value)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        },
+                        y: {
+                            ticks: { 
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            },
+                            grid: { color: '#334155' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Create hourly pattern chart
+        function createHourlyChart(hourlyData) {
+            const ctx = document.getElementById('hourlyChart').getContext('2d');
+            
+            if (hourlyChart) {
+                hourlyChart.destroy();
+            }
+            
+            if (!hourlyData || hourlyData.length === 0) {
+                ctx.fillStyle = '#94a3b8';
+                ctx.textAlign = 'center';
+                ctx.font = '16px sans-serif';
+                ctx.fillText('No hourly data available', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+            
+            const labels = hourlyData.map(d => `${d.hour_of_day}:00`);
+            const tradeCounts = hourlyData.map(d => parseInt(d.trade_count || 0));
+            
+            hourlyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Trades per Hour',
+                        data: tradeCounts,
+                        backgroundColor: 'rgba(255, 215, 0, 0.6)',
+                        borderColor: '#ffd700',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e2e8f0'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update strategy performance table
+        function updateStrategyTable(strategies) {
+            const container = document.getElementById('strategyTableContainer');
+            
+            if (!strategies || strategies.length === 0) {
+                showNoData(container, 'No strategy data available');
+                return;
+            }
+            
+            let tableHTML = `
+                <table class="strategy-table">
+                    <thead>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Trades</th>
+                            <th>Fill Rate</th>
+                            <th>Volume</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            strategies.forEach(strategy => {
+                const fillRate = strategy.fill_rate_percent || 0;
+                const fillRateClass = fillRate >= 90 ? 'kpi-positive' : fillRate >= 70 ? 'kpi-neutral' : 'kpi-negative';
+                const totalTrades = strategy.total_trades || 0;
+                const filledTrades = strategy.filled_trades || 0;
+                
+                // Show more detailed trade info
+                const tradeInfo = `${formatNumber(totalTrades)} (${formatNumber(filledTrades)} filled)`;
+                
+                tableHTML += `
+                    <tr>
+                        <td>${strategy.strategy_name || 'Unknown'}</td>
+                        <td>${tradeInfo}</td>
+                        <td class="${fillRateClass}">${formatPercent(fillRate)}</td>
+                        <td>${formatCurrency(strategy.total_volume || 0)}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
+        }
+        
+        // Update top tickers
+        function updateTopTickers(tickers) {
+            const container = document.getElementById('topTickersContainer');
+            
+            if (!tickers || tickers.length === 0) {
+                showNoData(container, 'No ticker data available');
+                return;
+            }
+            
+            let tickersHTML = '<div class="top-tickers">';
+            
+            tickers.slice(0, 10).forEach(ticker => {
+                tickersHTML += `
+                    <div class="ticker-item">
+                        <div class="ticker-symbol">${ticker.ticker || 'Unknown'}</div>
+                        <div class="ticker-volume">${formatCurrency(ticker.total_volume || 0)}</div>
+                    </div>
+                `;
+            });
+            
+            tickersHTML += '</div>';
+            container.innerHTML = tickersHTML;
+        }
+        
+        // Update position performance table
+        function updatePositionTable(positions) {
+            const container = document.getElementById('positionTableContainer');
+            
+            if (!positions || positions.length === 0) {
+                showNoData(container, 'No current positions');
+                return;
+            }
+            
+            let tableHTML = `
+                <table class="strategy-table">
+                    <thead>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Ticker</th>
+                            <th>Quantity</th>
+                            <th>Entry Price</th>
+                            <th>Current Price</th>
+                            <th>Market Value</th>
+                            <th>Unrealized P&L</th>
+                            <th>P&L %</th>
+                            <th>Days Held</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            positions.forEach(position => {
+                const pnl = position.unrealized_pnl || 0;
+                const pnlPercent = position.pnl_percent || 0;
+                const pnlClass = pnl >= 0 ? 'kpi-positive' : 'kpi-negative';
+                
+                tableHTML += `
+                    <tr>
+                        <td>${position.strategy_name || 'Unknown'}</td>
+                        <td><strong>${position.ticker || 'Unknown'}</strong></td>
+                        <td>${formatNumber(position.quantity || 0)}</td>
+                        <td>${formatCurrency(position.entry_price || 0)}</td>
+                        <td>${formatCurrency(position.current_price || 0)}</td>
+                        <td>${formatCurrency(position.market_value || 0)}</td>
+                        <td class="${pnlClass}"><strong>${formatCurrency(pnl)}</strong></td>
+                        <td class="${pnlClass}"><strong>${formatPercent(pnlPercent)}</strong></td>
+                        <td>${position.days_held || 0} days</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
+        }
+        
+        // Load dashboard data
+        async function loadDashboard() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            const lastUpdate = document.getElementById('lastUpdate');
+            
+            try {
+                refreshBtn.disabled = true;
+                refreshBtn.textContent = '🔄 Loading...';
+                lastUpdate.textContent = 'Loading...';
+                
+                const data = await fetchDashboardData();
+                
+                // Update KPIs
+                updateKPICards(data.kpis);
+                
+                // Update strategy performance
+                updateStrategyTable(data.strategy_performance);
+                
+                // Update daily P&L chart
+                createDailyPnlChart(data.daily_pnl || []);
+                
+                // Update position performance table
+                updatePositionTable(data.position_performance || []);
+                
+                // Update performance metrics
+                const metrics = data.performance_metrics || {};
+                createHourlyChart(metrics.hourly_patterns || []);
+                updateTopTickers(metrics.top_tickers || []);
+                
+                // Update timestamp
+                const timestamp = new Date(data.generated_at || Date.now());
+                lastUpdate.textContent = `Last updated: ${timestamp.toLocaleString()}`;
+                
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                lastUpdate.textContent = 'Error loading data';
+                
+                // Show error in KPI cards
+                ['portfolioValue', 'tradeCount', 'totalVolume', 'avgExecution'].forEach(id => {
+                    document.getElementById(id).textContent = 'Error';
+                });
+                
+                // Show errors in containers
+                showError(document.getElementById('strategyTableContainer'), error.message);
+                showError(document.getElementById('topTickersContainer'), error.message);
+                
+            } finally {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '🔄 Refresh';
+            }
+        }
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load initial data
+            loadDashboard();
+            
+            // Setup refresh button
+            document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+            
+            // Auto-refresh every 5 minutes (optional - keeping it simple)
+            // setInterval(loadDashboard, 5 * 60 * 1000);
+        });
+    </script>
+</body>
+</html>

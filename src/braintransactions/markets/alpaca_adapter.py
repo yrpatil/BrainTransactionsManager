@@ -13,7 +13,7 @@ from datetime import datetime
 import uuid
 import re
 import alpaca_trade_api as tradeapi
-from alpaca_trade_api.rest import APIError
+from alpaca_trade_api.rest import APIError, TimeFrame
 from functools import partial
 
 from .base import MarketAdapter, AssetType, OrderSide, OrderType, OrderStatus
@@ -429,17 +429,18 @@ class AlpacaAdapter(MarketAdapter):
         try:
             asset_type = self._detect_asset_type(symbol)
             
+            # Try to get bars first
+            bars = None
             if asset_type == AssetType.CRYPTO:
-                # Get crypto market data using lambda for keyword arguments
                 bars = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: self.api.get_crypto_bars(symbol, '1Day', limit=1)
+                    None, lambda: self.api.get_crypto_bars(symbol, TimeFrame.Day, limit=1)
                 )
             else:
-                # Get stock market data using lambda for keyword arguments
                 bars = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: self.api.get_bars(symbol, '1Day', limit=1)
+                    None, lambda: self.api.get_bars(symbol, TimeFrame.Day, limit=1, feed='iex')
                 )
             
+            # If bars are available, use them
             if bars and len(bars) > 0:
                 bar = bars[0]
                 return {
@@ -452,12 +453,56 @@ class AlpacaAdapter(MarketAdapter):
                     'timestamp': bar.t.isoformat(),
                     'asset_type': asset_type.value
                 }
+            
+            # Fallback: Try to get latest trade/quote for current price
+            logger.info(f"No bars available for {symbol}, trying latest trade/quote")
+            
+            if asset_type == AssetType.CRYPTO:
+                # For crypto, try latest trade
+                try:
+                    trades = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: self.api.get_crypto_trades(symbol, limit=1)
+                    )
+                    if trades and len(trades) > 0:
+                        trade = trades[0]
+                        return {
+                            'symbol': symbol,
+                            'price': float(trade.price),
+                            'timestamp': trade.timestamp.isoformat(),
+                            'asset_type': asset_type.value,
+                            'source': 'latest_trade'
+                        }
+                except Exception as trade_error:
+                    logger.warning(f"Failed to get crypto trade for {symbol}: {trade_error}")
             else:
-                return {
-                    'symbol': symbol,
-                    'error': 'No market data available',
-                    'asset_type': asset_type.value
-                }
+                # For stocks, try latest quote
+                try:
+                    quote = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: self.api.get_latest_quote(symbol)
+                    )
+                    # Adjust for SDK attribute names (snake_case)
+                    bid_attr = getattr(quote, 'bid_price', None)
+                    ask_attr = getattr(quote, 'ask_price', None)
+                    if bid_attr is not None and ask_attr is not None:
+                        mid_price = (float(bid_attr) + float(ask_attr)) / 2
+                        return {
+                            'symbol': symbol,
+                            'price': mid_price,
+                            'bid': float(bid_attr),
+                            'ask': float(ask_attr),
+                            'timestamp': getattr(quote, 'timestamp', None).isoformat() if hasattr(quote, 'timestamp') and quote.timestamp else None,
+                            'asset_type': asset_type.value,
+                            'source': 'latest_quote'
+                        }
+                except Exception as quote_error:
+                    logger.warning(f"Failed to get quote for {symbol}: {quote_error}")
+            
+            # If all else fails, return no data message
+            return {
+                'symbol': symbol,
+                'error': 'No market data available',
+                'asset_type': asset_type.value
+            }
                 
         except Exception as e:
             logger.error(f"Error getting market data for {symbol}: {e}")
